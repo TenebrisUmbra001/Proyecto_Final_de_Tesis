@@ -1,0 +1,21 @@
+{
+  "name": "proyecto_final_de_tesis",
+  "version": "1.0.0",
+  "description": "Proyecto de Tesis Sistema de supervision y control de red",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TenebrisUmbra001/Proyecto_Final_de_Tesis.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/TenebrisUmbra001/Proyecto_Final_de_Tesis/issues"
+  },
+  "homepage": "https://github.com/TenebrisUmbra001/Proyecto_Final_de_Tesis#readme"
+}
