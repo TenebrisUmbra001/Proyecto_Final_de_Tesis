@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "description": "Proyecto de Tesis Sistema de supervision y control de red",
   "main": "index.js",
+
+    
+
   "scripts": {
+    "dev": "tsx Backend/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
+  
+
   },
   "repository": {
     "type": "git",
@@ -17,5 +23,17 @@
   "bugs": {
     "url": "https://github.com/TenebrisUmbra001/Proyecto_Final_de_Tesis/issues"
   },
-  "homepage": "https://github.com/TenebrisUmbra001/Proyecto_Final_de_Tesis#readme"
+  "homepage": "https://github.com/TenebrisUmbra001/Proyecto_Final_de_Tesis#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
 }

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centinela · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#0a0e1a;--bg-2:#0f1422;--card:#141a2b;--card-2:#1a2138;--border:#222a44;--fg:#e8edf8;--muted:#7b86a3;--accent:#00d9a3;--accent-dim:rgba(0,217,163,.15);--coral:#ff6b4a;--amber:#ffc857;--violet:#8b7fff;--danger:#ff4d6d;--radius:14px;--shadow:0 10px 40px -10px rgba(0,0,0,.5)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--fg);overflow:hidden;background-image:radial-gradient(900px 600px at -10% -10%,rgba(0,217,163,.08),transparent 60%),radial-gradient(700px 500px at 110% 10%,rgba(255,107,74,.06),transparent 60%)}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#2a3450;border-radius:8px}
+  .app{display:grid;grid-template-columns:260px 1fr;height:100vh}
+  .sidebar{background:linear-gradient(180deg,#0c1120,#0a0e1a);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:22px 16px}
+  .brand{display:flex;align-items:center;gap:12px;padding:6px 8px 22px}
+  .brand-logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#00b386);display:grid;place-items:center;box-shadow:0 6px 20px -4px rgba(0,217,163,.5);position:relative}
+  .brand-logo::after{content:'';position:absolute;inset:2px;border-radius:9px;background:linear-gradient(135deg,rgba(255,255,255,.2),transparent 50%)}
+  .brand-logo i{color:#062018;font-size:18px;position:relative;z-index:1}
+  .brand-name{font-family:'Space Grotesk';font-weight:700;font-size:18px;letter-spacing:-.3px}.brand-name span{color:var(--accent)}
+  .brand-tag{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+  .nav-label{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:0 10px;margin:14px 0 8px;font-weight:600}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer;color:var(--muted);font-weight:500;font-size:14px;transition:all .2s;position:relative;margin-bottom:2px}
+  .nav-item i{width:18px;text-align:center;font-size:14px}
+  .nav-item:hover{background:var(--card);color:var(--fg)}
+  .nav-item.active{background:linear-gradient(90deg,var(--accent-dim),transparent);color:var(--accent)}
+  .nav-item.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--accent);border-radius:3px}
+  .nav-item .badge{margin-left:auto;background:var(--coral);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+  .sidebar-footer{margin-top:auto;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;gap:12px}
+  .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--violet),var(--coral));display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+  .user-info{flex:1;min-width:0}.user-info .name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.user-info .role{font-size:11px;color:var(--muted)}
+  .icon-btn{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px;transition:.2s}.icon-btn:hover{background:var(--bg-2);color:var(--fg)}
+  .main{display:flex;flex-direction:column;overflow:hidden}
+  .topbar{height:68px;padding:0 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;background:rgba(10,14,26,.6);backdrop-filter:blur(10px);z-index:10}
+  .page-title{font-family:'Space Grotesk';font-weight:600;font-size:20px;letter-spacing:-.3px}.page-title small{display:block;font-family:'DM Sans';font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+  .search{margin-left:auto;position:relative;width:280px}
+  .search input{width:100%;padding:10px 14px 10px 38px;background:var(--card);border:1px solid var(--border);color:var(--fg);border-radius:10px;font-family:inherit;font-size:13px}
+  .search i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px}
+  .content{flex:1;overflow-y:auto;padding:28px}
+  .view{display:none;animation:fade .4s ease}.view.active{display:block}@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .card-title{font-family:'Space Grotesk';font-weight:600;font-size:16px}.card-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .toolbar .search{flex:1;min-width:220px;margin:0}
+  .filter-chip{padding:9px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:.2s}
+  .filter-chip:hover{color:var(--fg);border-color:#2d3858}.filter-chip.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(0,217,163,.3)}
+  .btn{padding:9px 16px;border-radius:10px;border:0;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:.2s}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),#00b386);color:#04150f;box-shadow:0 4px 14px -2px rgba(0,217,163,.4)}.btn-primary:hover{transform:translateY(-1px)}
+  .btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--fg)}
+  .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  table{width:100%;border-collapse:collapse}thead{background:var(--bg-2)}
+  th{text-align:left;padding:14px 18px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+  td{padding:14px 18px;font-size:13px;border-bottom:1px solid var(--border)}tr:last-child td{border:0}tbody tr:hover{background:rgba(255,255,255,.02)}
+  .user-cell{display:flex;align-items:center;gap:12px}.user-cell .avatar{width:34px;height:34px;font-size:12px}
+  .user-cell b{font-weight:600;display:block}.user-cell small{color:var(--muted);font-size:11px}.user-cell .desc{display:block;color:var(--accent);opacity:.7;font-size:10px;margin-top:2px}
+  .tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px}
+  .tag.active{background:rgba(0,217,163,.15);color:var(--accent)}.tag.pending{background:rgba(255,200,87,.15);color:var(--amber)}
+  .tag.role-super{background:rgba(139,127,255,.15);color:var(--violet)}.tag.role-admin{background:rgba(0,217,163,.12);color:var(--accent)}.tag.role-user{background:rgba(123,134,163,.15);color:var(--muted)}
+  .row-actions{display:flex;gap:6px;justify-content:flex-end}
+  .row-actions button{width:30px;height:30px;border-radius:7px;border:0;cursor:pointer;background:var(--bg-2);color:var(--muted);transition:.2s}
+  .row-actions button:hover{background:var(--card-2);color:var(--fg)}.row-actions button.danger:hover{color:var(--danger);background:rgba(255,77,109,.1)}
+  .toast-wrap{position:fixed;top:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:10px}
+  .toast{background:var(--card);border:1px solid var(--border);padding:14px 18px;border-radius:12px;min-width:280px;display:flex;align-items:center;gap:12px;font-size:13px;box-shadow:var(--shadow);animation:slideIn .3s;border-left:3px solid var(--accent)}
+  .toast.err{border-left-color:var(--danger)}@keyframes slideIn{from{transform:translateX(120%)}to{transform:translateX(0)}}
+  .modal-bg{position:fixed;inset:0;background:rgba(5,8,15,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal-bg.show{display:flex}.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:500px;padding:28px;box-shadow:var(--shadow)}
+  .modal h3{font-family:'Space Grotesk';font-size:20px;margin-bottom:6px}.modal p{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .form-group{margin-bottom:14px}.form-group label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .form-group input,.form-group select{width:100%;padding:11px 14px;background:var(--bg-2);border:1px solid var(--border);color:var(--fg);border-radius:10px;font-family:inherit;font-size:13px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+  .chart-wrap{position:relative;height:300px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo"><i class="fa-solid fa-user-shield"></i></div>
+      <div><div class="brand-name">Centinela<span>.</span></div><div class="brand-tag">Admin Hub</div></div>
+    </div>
+    <div class="nav-label">Principal</div>
+    <div class="nav-item active" data-view="users"><i class="fa-solid fa-users"></i>Gestionar Usuarios<span class="badge">12</span></div>
+    <div class="nav-item" data-view="reports"><i class="fa-solid fa-chart-column"></i>Reportes</div>
+    <div class="sidebar-footer">
+      <div class="avatar">DC</div>
+      <div class="user-info"><div class="name">Diego Carrillo</div><div class="role">Admin</div></div>
+      <button class="icon-btn" title="Cerrar sesión"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="page-title"><span id="pageTitle">Gestionar Usuarios</span><small id="pageSub">Administra a los usuarios estándar de la plataforma</small></div>
+      <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Buscar..." id="globalSearch"></div>
+    </header>
+
+    <main class="content">
+      <!-- USERS VIEW -->
+      <section class="view active" id="view-users">
+        <div class="toolbar">
+          <div class="search" style="margin:0"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Buscar por nombre o correo..." id="userSearch"></div>
+          <button class="filter-chip active" data-filter="all">Todos</button>
+          <button class="filter-chip" data-filter="active">Activos</button>
+          <button class="filter-chip" data-filter="pending">Pendientes</button>
+          <button class="btn btn-primary" id="addUserBtn"><i class="fa-solid fa-plus"></i>Nuevo Usuario</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th style="text-align:right">Acciones</th></tr></thead>
+            <tbody id="usersTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- REPORTS VIEW -->
+      <section class="view" id="view-reports">
+        <div class="card">
+          <div class="card-head"><div><div class="card-title">Reportes de Actividad</div><div class="card-sub">Estadísticas de usuarios</div></div></div>
+          <div class="chart-wrap"><canvas id="reportChart"></canvas></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Crear nuevo usuario</h3>
+    <p id="modalSubtitle">Completa los datos del nuevo miembro del equipo.</p>
+    <input type="hidden" id="userId">
+    <div class="form-group"><label>Nombre completo</label><input type="text" id="newName"></div>
+    <div class="form-group"><label>Descripción / Cargo</label><input type="text" id="newDesc"></div>
+    <div class="form-group"><label>Rol</label><select id="newRole"><option value="user">Usuario</option></select></div>
+    <div class="form-group"><label>Contraseña</label><input type="password" id="newPass" placeholder="Ingrese contraseña"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="modalSave"><i class="fa-solid fa-check"></i><span id="saveBtnText">Crear usuario</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const USERS = [
+  {id:1, name:'Valeria Mendoza', email:'valeria@centinela.io', desc:'Directora General', role:'superadmin', status:'active', last:'Hace 2 min', initials:'VM'},
+  {id:2, name:'Diego Carrillo', email:'diego@centinela.io', desc:'Gerente de Operaciones', role:'admin', status:'active', last:'Hace 14 min', initials:'DC'},
+  {id:3, name:'Ana López', email:'ana@centinela.io', desc:'Desarrolladora', role:'user', status:'active', last:'Hace 1 h', initials:'AL'},
+  {id:4, name:'Carlos Ruiz', email:'carlos@centinela.io', desc:'Analista de Datos', role:'user', status:'pending', last:'Nunca', initials:'CR'}
+];
+let currentFilter = 'all';
+const currentUserId = 2; // Diego
+
+const titles = { users:['Gestionar Usuarios','Administra a los usuarios estándar de la plataforma'], reports:['Reportes','Análisis detallado del rendimiento'] };
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+    document.getElementById('view-'+item.dataset.view).classList.add('active');
+    document.getElementById('pageTitle').innerText = titles[item.dataset.view][0];
+    document.getElementById('pageSub').innerText = titles[item.dataset.view][1];
+  });
+});
+
+function toast(msg,type='ok'){
+  const t=document.createElement('div');t.className='toast '+(type==='err'?'err':'');
+  t.innerHTML=`<i class="fa-solid ${type==='err'?'fa-circle-exclamation':'fa-circle-check'}" style="color:${type==='err'?'var(--danger)':'var(--accent)'}"></i><div>${msg}</div>`;
+  document.getElementById('toastWrap').appendChild(t);
+  setTimeout(()=>{t.style.opacity=0;t.style.transform='translateX(120%)';setTimeout(()=>t.remove(),300)},3000);
+}
+
+function renderUsers(){
+  const q=document.getElementById('userSearch').value.toLowerCase();
+  const tb=document.getElementById('usersTbody');
+  const filtered=USERS.filter(u=>{
+    const matchQ=!q||u.name.toLowerCase().includes(q)||u.email.toLowerCase().includes(q);
+    const matchF=currentFilter==='all'||u.status===currentFilter;
+    return matchQ&&matchF;
+  });
+  if(!filtered.length){tb.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)">Sin resultados</td></tr>`;return;}
+  
+  tb.innerHTML=filtered.map(u=>{
+    const roleClass=u.role==='superadmin'?'role-super':u.role==='admin'?'role-admin':'role-user';
+    const roleLabel=u.role==='superadmin'?'SuperAdmin':u.role==='admin'?'Admin':'Usuario';
+    
+    // LÓGICA ADMIN: Solo puede editar/eliminar a usuarios con rol 'user'. No a otros Admines ni SuperAdmines.
+    const canManage = u.role === 'user';
+    
+    return `<tr>
+      <td><div class="user-cell"><div class="avatar">${u.initials}</div><div><b>${u.name}</b><small>${u.email}</small><span class="desc">${u.desc}</span></div></div></td>
+      <td><span class="tag ${roleClass}">${roleLabel}</span></td>
+      <td><span class="tag ${u.status}">${u.status==='active'?'Activo':'Pendiente'}</span></td>
+      <td style="color:var(--muted)">${u.last}</td>
+      <td><div class="row-actions">
+        <button title="Editar" data-action="edit" data-id="${u.id}" ${canManage?'':'disabled style="opacity:.3;cursor:not-allowed" title="Sin permiso"'}><i class="fa-solid fa-pen"></i></button>
+        <button class="danger" title="Eliminar" data-action="delete" data-id="${u.id}" ${canManage?'':'disabled style="opacity:.3;cursor:not-allowed" title="Sin permiso"'}><i class="fa-solid fa-trash"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  tb.querySelectorAll('button[data-action]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(btn.disabled)return;
+      const id=parseInt(btn.dataset.id);const action=btn.dataset.action;const user=USERS.find(u=>u.id===id);
+      if(action==='edit')openModal(id);if(action==='delete'){USERS.splice(USERS.indexOf(user),1);renderUsers();toast('Usuario eliminado','err');}
+    });
+  });
+}
+
+document.getElementById('userSearch').addEventListener('input',renderUsers);
+document.querySelectorAll('.filter-chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('.filter-chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');currentFilter=c.dataset.filter;renderUsers();
+}));
+
+const modalBg=document.getElementById('modalBg');
+function openModal(id=null){
+  if(id){const u=USERS.find(x=>x.id===id);document.getElementById('modalTitle').innerText='Editar usuario';document.getElementById('modalSubtitle').innerText='Deja la contraseña vacía para mantener la actual.';document.getElementById('saveBtnText').innerText='Guardar cambios';document.getElementById('userId').value=id;document.getElementById('newName').value=u.name;document.getElementById('newDesc').value=u.desc;document.getElementById('newRole').value=u.role;document.getElementById('newPass').value='';document.getElementById('newPass').placeholder='Dejar en blanco para mantener';}
+  else{document.getElementById('modalTitle').innerText='Crear nuevo usuario';document.getElementById('modalSubtitle').innerText='Completa los datos del nuevo miembro.';document.getElementById('saveBtnText').innerText='Crear usuario';document.getElementById('userId').value='';document.getElementById('newName').value='';document.getElementById('newDesc').value='';document.getElementById('newRole').value='user';document.getElementById('newPass').value='';document.getElementById('newPass').placeholder='Ingrese contraseña';}
+  modalBg.classList.add('show');
+}
+document.getElementById('addUserBtn').addEventListener('click',()=>openModal());
+document.getElementById('modalCancel').addEventListener('click',()=>modalBg.classList.remove('show'));
+
+document.getElementById('modalSave').addEventListener('click',()=>{
+  const id=document.getElementById('userId').value;const name=document.getElementById('newName').value.trim();const desc=document.getElementById('newDesc').value.trim();const role=document.getElementById('newRole').value;const pass=document.getElementById('newPass').value;
+  if(!name||!desc){toast('Completa todos los campos','err');return;}
+  if(id){const u=USERS.find(x=>x.id===parseInt(id));u.name=name;u.desc=desc;u.role=role;u.initials=name.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();if(pass)toast('Usuario actualizado','ok');else toast('Usuario actualizado (sin cambiar contraseña)','ok');}
+  else{if(!pass){toast('La contraseña es obligatoria','err');return;}USERS.push({id:Date.now(),name,desc,role,status:'pending',last:'Nunca',initials:name.split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase(),email:name.toLowerCase().replace(' ','.')+'@centinela.io'});toast('Usuario creado','ok');}
+  modalBg.classList.remove('show');renderUsers();
+});
+
+// Gráfico básico
+const ctx=document.getElementById('reportChart').getContext('2d');
+new Chart(ctx,{type:'line',data:{labels:['Ene','Feb','Mar','Abr','May','Jun'],datasets:[{label:'Actividad',data:[65,59,80,81,56,90],borderColor:'#00d9a3',backgroundColor:'rgba(0,217,163,.1)',fill:true,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(255,255,255,.05)'}}}}});
+
+renderUsers();
+</script>
+</body>
+</html>
