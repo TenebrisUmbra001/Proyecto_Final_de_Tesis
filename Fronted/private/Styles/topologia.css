@@ -1,0 +1,582 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+body {
+    height: 100vh;
+    width: 100vw;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background: green;
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+}
+
+header h1 {
+    flex: 1;
+    text-align: center;
+    color: whitesmoke;
+    font-size: 18px;
+}
+
+.BtnHeader {
+    padding: 6px 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: rgb(3, 121, 29);
+    color: #fff;
+    cursor: pointer;
+}
+
+.BtnHeader.salir {
+    background: #b00000;
+}
+
+.BtnHeader:hover {
+    background: #fff;
+    color: #000;
+}
+
+#indicadorGuardado {
+    color: #ffff00;
+    font-size: 12px;
+    margin-right: 10px;
+}
+
+#contadorEquipos {
+    color: #ffff00;
+    font-size: 12px;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.BtnHeader.conectar {
+    background: #0f7173;
+}
+
+.BtnHeader.activo {
+    background: #ffcc00;
+    color: #000;
+}
+
+#estadoConexion {
+    color: #ffcc00;
+    font-size: 12px;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.origen-conexion {
+    box-shadow: 0 0 0 4px #ffcc00 !important;
+}
+
+#capa-conexiones {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.linea-conexion {
+    cursor: pointer;
+}
+
+.linea-hit {
+    cursor: pointer;
+}
+
+/* ---------- MIGAS DE PAN ---------- */
+#migas {
+    background: rgb(16, 33, 48);
+    color: #fff;
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+#migas .miga {
+    cursor: pointer;
+    color: #7fd4ff;
+    font-weight: bold;
+}
+
+#migas .miga:hover {
+    text-decoration: underline;
+}
+
+#migas .sep {
+    color: #888;
+    margin: 0 5px;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* ---------- LIENZO ---------- */
+#lienzo {
+    flex: 1;
+    position: relative;
+    margin: 8px;
+    border: solid black 2px;
+    border-radius: 12px;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(rgb(23, 134, 134), rgb(43, 210, 216));
+    background-size: 20px 20px, 20px 20px, 100% 100%;
+    overflow: auto;
+}
+
+/* ---------- ELEMENTOS (más visibles) ---------- */
+.elemento {
+    position: absolute;
+    border: 3px solid;
+    border-radius: 8px;
+    cursor: move;
+    user-select: none;
+    -moz-user-select: none;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.elemento .etiqueta {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 3px #000;
+    padding-top: 6px;
+    pointer-events: none;
+}
+
+.elemento .ip {
+    display: block;
+    font-size: 10px;
+    color: #eef;
+    text-shadow: 1px 1px 2px #000;
+    pointer-events: none;
+}
+
+.unidad {
+    border-color: #7ab8ff;
+    background: rgba(21, 101, 192, 0.55);
+}
+
+.edificio {
+    border-color: #ff8fa3;
+    background: rgba(194, 30, 60, 0.50);
+}
+
+.local {
+    border-color: #ffc4b8;
+    background: rgba(214, 90, 60, 0.50);
+}
+
+.switch {
+    border-color: #c9b6ff;
+    background: rgba(110, 80, 210, 0.60);
+    border-radius: 50%;
+}
+
+.modem {
+    border-color: #ffd0e8;
+    background: rgba(230, 110, 170, 0.60);
+    border-radius: 50%;
+}
+
+.transceiver {
+    border-color: #bfe6f5;
+    background: rgba(60, 150, 190, 0.60);
+    border-radius: 50%;
+}
+
+.bd,
+.dns,
+.firewall,
+.servidor {
+    border-color: #ffe08a;
+    background: rgba(212, 160, 20, 0.55);
+}
+
+.handle {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    background: #4ecca3;
+    border-radius: 50%;
+    cursor: se-resize;
+}
+
+.seleccionado {
+    box-shadow: 0 0 0 4px #4ecca3;
+}
+
+/* ---------- PANEL ---------- */
+#panel {
+    width: 280px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+.h2 {
+    padding: 4px;
+    color: #fff;
+    text-align: center;
+    background: rgb(16, 33, 48);
+    border-bottom: solid black 2px;
+}
+
+#panel-contenido {
+    padding: 12px;
+    color: #000;
+    font-size: 14px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+#panel-contenido .aviso {
+    color: #555;
+    text-align: center;
+}
+
+#panel-contenido h3 {
+    margin-bottom: 8px;
+    color: rgb(16, 33, 48);
+    border-bottom: 1px solid #999;
+}
+
+#panel-contenido label {
+    display: block;
+    margin-top: 8px;
+    font-weight: bold;
+}
+
+#panel-contenido input[type="text"],
+#panel-contenido select {
+    width: 100%;
+    padding: 5px;
+    margin-top: 3px;
+    border: 1px solid #999;
+    border-radius: 4px;
+}
+
+.btn-add,
+.btn-del {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #fff;
+}
+
+.btn-add {
+    background: rgb(3, 121, 29);
+}
+
+.btn-add:hover {
+    background: green;
+}
+
+.btn-del {
+    background: #b00000;
+}
+
+.btn-del:hover {
+    background: red;
+}
+
+#barra-agregar {
+    padding: 12px;
+    border-top: 2px solid #000;
+}
+
+
+#contadorEquipos {
+    color: #ffff00;
+    font-size: 12px;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.BtnHeader {
+    padding: 6px 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: rgb(3, 121, 29);
+    color: #fff;
+    cursor: pointer;
+}
+
+.BtnHeader.salir {
+    background: #b00000;
+}
+
+.BtnHeader:hover {
+    background: #fff;
+    color: #000;
+}
+
+#indicadorGuardado {
+    color: #ffff00;
+    font-size: 12px;
+    margin-right: 10px;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* ---------- LIENZO ---------- */
+#lienzo {
+    flex: 1;
+    position: relative;
+    margin: 8px;
+    border: solid black 2px;
+    border-radius: 12px;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(rgb(23, 134, 134), rgb(43, 210, 216));
+    background-size: 20px 20px, 20px 20px, 100% 100%;
+    overflow: auto;
+}
+
+/* ---------- ELEMENTOS ---------- */
+.elemento {
+    position: absolute;
+    border: 2px solid;
+    border-radius: 6px;
+    cursor: move;
+    user-select: none;
+    padding: 2px;
+    text-align: center;
+}
+
+.elemento .etiqueta {
+    display: block;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 2px #000;
+    pointer-events: none;
+}
+
+.elemento .ip {
+    display: block;
+    font-size: 9px;
+    color: #eef;
+    text-shadow: 1px 1px 2px #000;
+    pointer-events: none;
+}
+
+.unidad {
+    border-color: #4a90d9;
+    background: rgba(74, 144, 217, 0.18);
+}
+
+.edificio {
+    border-color: #e94560;
+    background: rgba(233, 69, 96, 0.18);
+}
+
+.local {
+    border-color: #f38181;
+    background: rgba(243, 129, 129, 0.18);
+}
+
+.switch {
+    border-color: #aa96da;
+    background: rgba(170, 150, 218, 0.35);
+    border-radius: 50%;
+}
+
+.modem {
+    border-color: #fcbad3;
+    background: rgba(252, 186, 211, 0.35);
+    border-radius: 50%;
+}
+
+.transceiver {
+    border-color: #a8d8ea;
+    background: rgba(168, 216, 234, 0.35);
+    border-radius: 50%;
+}
+
+.bd,
+.dns,
+.firewall,
+.servidor {
+    border-color: #ffd166;
+    background: rgba(255, 209, 102, 0.25);
+}
+
+.handle {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    width: 13px;
+    height: 13px;
+    background: #4ecca3;
+    border-radius: 50%;
+    cursor: se-resize;
+}
+
+.seleccionado {
+    box-shadow: 0 0 0 3px #4ecca3;
+}
+
+/* ---------- PANEL ---------- */
+#panel {
+    width: 280px;
+    background: #fff;
+    border-left: solid white 1px;
+    display: flex;
+    flex-direction: column;
+}
+
+.h2 {
+    padding: 4px;
+    color: #fff;
+    text-align: center;
+    background: rgb(16, 33, 48);
+    border-bottom: solid black 2px;
+}
+
+#panel-contenido {
+    padding: 12px;
+    color: #000;
+    font-size: 14px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+#panel-contenido .aviso {
+    color: #555;
+    text-align: center;
+}
+
+#panel-contenido h3 {
+    margin-bottom: 8px;
+    color: rgb(16, 33, 48);
+    border-bottom: 1px solid #999;
+}
+
+#panel-contenido label {
+    display: block;
+    margin-top: 8px;
+    font-weight: bold;
+}
+
+#panel-contenido input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    margin-top: 3px;
+    border: 1px solid #999;
+    border-radius: 4px;
+}
+
+.btn-add,
+.btn-del {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #fff;
+}
+
+.btn-add {
+    background: rgb(3, 121, 29);
+}
+
+.btn-add:hover {
+    background: green;
+}
+
+.btn-del {
+    background: #b00000;
+}
+
+.btn-del:hover {
+    background: red;
+}
+
+#barra-agregar {
+    padding: 12px;
+    border-top: 2px solid #000;
+}
+
+#modal label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 13px;
+    color: #16213e;
+}
+
+#modal input[type="text"],
+#modal input[type="number"],
+#modal input[type="date"],
+#modal select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 3px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+#modal input[readonly] {
+    background: #f0f0f0;
+    color: #666;
+}
+
+#modal input:focus,
+#modal select:focus {
+    border-color: #0f3460;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(15, 52, 96, 0.2);
+}
+
+#modal h4 {
+    font-size: 14px;
+    color: #16213e;
+}
+
+.pc-nodo:hover {
+    filter: drop-shadow(0 0 8px #4a90d9);
+    cursor: pointer;
+}/* Cuadradito de PC */
+.pc {
+    border-color: #9ad1ff;
+    background: rgba(20, 110, 190, 0.75);
+    border-radius: 6px;
+}
+
+.pc .etiqueta { font-size: 10px; }
+.pc .ip { font-size: 9px; }

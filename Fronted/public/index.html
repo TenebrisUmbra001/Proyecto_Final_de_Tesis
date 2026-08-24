@@ -1,27 +1,34 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Acceso al Sistema</title>
     <link rel="shortcut icon" href="/Fronted/assets/assets.txt" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <h1>
-        <div class="Logo"></div>
-        <div>
+    <div class="container">
+        <div class="Logo">ACCESO AL SISTEMA</div>
+        
+        <div class="Logindiv">
             <form id="Login">
-                <input id="inputUser" type="text" required="true" placeholder="Ingrese Su Usuario" minlength="1">
-                <input id="inputPass" type="password" required placeholder="Ingrese Su Contraseña" minlength="1">
-                <button type="submit" id="ButtonLogin"> Iniciar Sesion</button>
+                <input id="inputUser" type="text" required placeholder="Ingrese Usuario" minlength="1" maxlength="16">
+                
+                <div class="divpassword">
+                    <input id="inputPass" type="password" required placeholder="Ingrese Contraseña" minlength="1" maxlength="16">
+                    
+                    <!-- Contenedor del ojo vacío, JS dibujará aquí -->
+                    <div class="eye-toggle" id="eyeIcon" onmouseover="showPass()" onmouseout="hidePass()"></div>
+                </div>  
+                
+                <button type="submit" id="ButtonLogin">Iniciar Sesión</button>
                 <p id="Mensaje_Error"></p>
             </form>
         </div>
+    </div>
 
-    </h1>
+
     <script src="main.js"></script>
 </body>
-
 </html>

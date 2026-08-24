@@ -14,7 +14,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: false, // true si usas HTTPS
+        secure: false,
         maxAge: 1000 * 60 * 60 * 2 // 2 horas
     }
 }));
@@ -43,30 +43,33 @@ function requiereRol(...rolesPermitidos: string[]) {
     };
 }
 
+// 📡 Sesión actual (para que el frontend sepa el rol)
+app.get('/api/sesion', requiereLogin, (req, res) => {
+    res.json({ 
+        nombre: req.session.usuario.nombre, 
+        rol: req.session.usuario.rol 
+    });
+});
+
 // ✅ Login endpoint
 app.post('/api/login', (req, res) => {
     const { usuario, contrasena } = req.body;
 
-    // 🔍 Limpieza de datos
-    const usuarioLimpio = usuario.trim().toLowerCase(); // trim() + case-insensitive
-    const contrasenaLimpia = contrasena; // Sin trim ni toLowerCase (case-sensitive)
+    const usuarioLimpio = usuario.trim().toLowerCase();
+    const contrasenaLimpia = contrasena;
 
-    // En el futuro esto vendrá de la base de datos
-    // Por ahora simulamos 3 usuarios de prueba
     const usuarios = [
-        { user: 'Tenebris', pass: process.env.DevPass!, rol: 'superadmin' },
+        { user: process.env.DevUser || 'Tenebris', pass: process.env.DevPass || '123456', rol: 'superadmin' },
         { user: 'admin', pass: 'admin123', rol: 'admin' },
         { user: 'operador', pass: 'op123', rol: 'operador' }
     ];
 
-    // 🔍 Usuario: case-insensitive | Contraseña: case-sensitive
     const encontrado = usuarios.find(u => 
         u.user.toLowerCase() === usuarioLimpio && 
         u.pass === contrasenaLimpia
     );
 
     if (encontrado) {
-        // 🔑 Creamos la sesión
         req.session.usuario = {
             nombre: encontrado.user,
             rol: encontrado.rol
@@ -88,7 +91,7 @@ app.post('/api/logout', (req, res) => {
     });
 });
 
-// 📄 Rutas privadas (servidas por el servidor, no estáticas)
+// 📄 Rutas privadas con control de rol específico
 app.get('/private/admin.html', requiereRol('admin', 'superadmin'), (req, res) => {
     res.sendFile(path.join(__dirname, '../Fronted/private/admin.html'));
 });
@@ -101,7 +104,20 @@ app.get('/private/superadmin.html', requiereRol('superadmin'), (req, res) => {
     res.sendFile(path.join(__dirname, '../Fronted/private/superadmin.html'));
 });
 
+// 🗺️ Rutas del sistema principal (mapa y topología) - solo requieren login
+app.get('/private/mapa.html', requiereLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, '../Fronted/private/mapa.html'));
+});
+
+app.get('/private/topologia.html', requiereLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, '../Fronted/private/topologia.html'));
+});
+
+// 📁 Todos los demás archivos en /private (CSS, JS, assets) protegidos con login
+app.use('/private', requiereLogin, express.static(path.join(__dirname, '../Fronted/private')));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`📁 Sirviendo archivos desde: ${path.join(__dirname, '../Fronted')}`);
 });

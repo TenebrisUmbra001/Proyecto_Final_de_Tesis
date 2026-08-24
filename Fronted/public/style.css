@@ -1,0 +1,141 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-sizing: border-box;
+}
+
+body {
+    /* Gradiente de fondo original */
+    background: linear-gradient(rgb(0, 40, 0), rgb(1, 90, 1), rgb(3, 130, 3), rgb(0, 150, 0));
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 60px;
+    position: relative;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.Logo {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-bottom: 25px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.Logindiv {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    width: 340px;
+    max-width: 90%;
+    padding: 40px;
+}
+
+#Login {
+    width: 100%;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccd1d9;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #f8f9fa;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+input:focus {
+    border-color: #03b103;
+    outline: none;
+    background-color: #ffffff;
+}
+
+.divpassword {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.divpassword input {
+    margin-bottom: 0;
+    padding-right: 45px; /* Espacio para el ojo */
+}
+
+.eye-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #7f8c8d;
+    padding: 5px;
+    width: 30px;
+    height: 30px;
+    display: block;
+}
+
+.eye-toggle:hover {
+    color: #03b103;
+}
+
+/* Asegurar que el SVG dibujado por JS encaje bien */
+.eye-toggle svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#ButtonLogin {
+    width: 100%;
+    padding: 12px;
+    background-color: #017a01;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 5px;
+}
+
+#ButtonLogin:hover {
+    background-color: #03b103;
+}
+
+#Mensaje_Error {
+    color: #c0392b;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 15px;
+    min-height: 15px;
+}
+
+footer {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #ecf0f1;
+    height: 40px;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+}
