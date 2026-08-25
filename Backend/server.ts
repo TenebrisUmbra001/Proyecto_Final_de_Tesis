@@ -8,6 +8,22 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+import { setTopologia, getEstados, iniciarMonitor } from './healthTests/monitor';
+
+// El frontend sincroniza la topología para el monitor
+app.post('/api/topologia', requiereLogin, (req, res) => {
+    setTopologia(req.body);
+    res.json({ exito: true });
+});
+
+// Estados para pintar verde/rojo en el mapa (lo usaremos mañana)
+app.get('/api/estados', requiereLogin, (req, res) => {
+    res.json(getEstados());
+});
+
+// Al final, antes del app.listen:
+iniciarMonitor();
+
 // ⚙️ Configuración de sesiones
 app.use(session({
     secret: process.env.SESSION_SECRET || 'mi-clave-secreta-muy-larga-y-segura',

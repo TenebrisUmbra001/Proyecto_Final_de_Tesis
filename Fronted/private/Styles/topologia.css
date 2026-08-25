@@ -580,3 +580,19 @@ main {
 
 .pc .etiqueta { font-size: 10px; }
 .pc .ip { font-size: 9px; }
+/* Indicador de estado del monitor (separado del asa de tamaño) */
+.estado-indicador {
+    position: absolute;
+    top: -7px;
+    left: -7px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    z-index: 6;
+    pointer-events: none;
+}
+.estado-online      { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.estado-offline     { background: #e74c3c; box-shadow: 0 0 6px #e74c3c; }
+.estado-degradado   { background: #f39c12; box-shadow: 0 0 6px #f39c12; }
+.estado-desconocido { background: #95a5a6; }

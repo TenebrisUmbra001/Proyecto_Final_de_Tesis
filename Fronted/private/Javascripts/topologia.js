@@ -78,12 +78,21 @@ function guardar() {
     var todo = JSON.parse(localStorage.getItem(STORAGE_KEY));
     todo.municipios[municipioId] = datos;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(todo));
+
+    fetch('/api/topologia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(todo)
+    }).catch(function (e) {
+        console.warn('No se pudo sincronizar con el monitor:', e);
+    });
+
     var ind = document.getElementById('indicadorGuardado');
     ind.textContent = '✔ Guardado';
     setTimeout(function () { ind.textContent = ''; }, 1500);
 }
 
-// ================= MIGRACIÓN de PCs viejas (pcs_conectadas) =================
+// ================= MIGRACIÓN de PCs viejas =================
 function migrarPCsAntiguas() {
     var cambios = false;
 
@@ -101,6 +110,7 @@ function migrarPCsAntiguas() {
                         pr: old.pr,
                         ip: old.ip,
                         sistemas_atiende: old.sistemas_atiende,
+                        prioridad: 'baja',
                         x: obj.x + obj.width + 50,
                         y: obj.y + (i * 90),
                         width: 80,
@@ -273,6 +283,14 @@ function opcionesVelFiltradas(velMaxima, sel) {
     return h;
 }
 
+// 🔧 NUEVO: opciones de prioridad (por defecto baja)
+function opcionesPrioridad(sel) {
+    var selVal = sel || 'baja';
+    return ['alta', 'media', 'baja'].map(function (p) {
+        return '<option value="' + p + '"' + (selVal === p ? ' selected' : '') + '>' + p + '</option>';
+    }).join('');
+}
+
 function campo(label, nombreCampo, valor, tipo, readonly) {
     return '<label>' + label + '</label><input type="' + (tipo || 'text') + '" data-campo="' + nombreCampo + '" value="' + (valor == null ? '' : valor) + '"' + (readonly ? ' readonly' : '') + '>';
 }
@@ -300,7 +318,7 @@ function puertoDisponible(obj, medio, puerto) {
     if (obj.tipo === 'modem') return puerto <= (obj.puerto_ethernet || 0);
     return true;
 }
-// Puertos realmente usados por conexiones (número máximo y conteo)
+
 function puertosUsadosReales(obj) {
     var res = { fibraMax: 0, ethMax: 0, fibraCount: 0, ethCount: 0 };
     for (var i = 0; i < datos.conexiones.length; i++) {
@@ -320,7 +338,6 @@ function puertosUsadosReales(obj) {
     return res;
 }
 
-// Velocidad más alta entre las conexiones del equipo
 function maxVelocidadConexiones(obj) {
     var max = 0;
     for (var i = 0; i < datos.conexiones.length; i++) {
@@ -332,6 +349,7 @@ function maxVelocidadConexiones(obj) {
     }
     return max;
 }
+
 // ================= NIVELES =================
 function listaActual() {
     if (ruta.length === 0) return datos.unidades;
@@ -529,7 +547,7 @@ function puntoCentro(rep) {
         y: el.offsetTop + el.offsetHeight / 2
     };
 }
-// 🔧 NUEVO: punto donde la línea toca el BORDE del elemento (no el centro)
+
 function puntoBorde(rep, cx, cy, tx, ty) {
     var el = document.querySelector('.elemento[data-id="' + rep.id + '"]');
     if (!el) return { x: cx, y: cy };
@@ -539,13 +557,11 @@ function puntoBorde(rep, cx, cy, tx, ty) {
     var len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return { x: cx, y: cy };
 
-    // Equipos redondos (switch, modem, transceiver): borde del círculo
     if (rep.tipo === 'switch' || rep.tipo === 'modem' || rep.tipo === 'transceiver') {
         var r = (el.offsetWidth / 2) + 2;
         return { x: cx + (dx / len) * r, y: cy + (dy / len) * r };
     }
 
-    // Rectángulos (unidad, edificio, local, servicio, pc): borde del cuadro
     var w = (el.offsetWidth / 2) + 2;
     var h = (el.offsetHeight / 2) + 2;
     var sx = (dx !== 0) ? w / Math.abs(dx) : Infinity;
@@ -553,6 +569,7 @@ function puntoBorde(rep, cx, cy, tx, ty) {
     var t = Math.min(sx, sy, 1);
     return { x: cx + dx * t, y: cy + dy * t };
 }
+
 function dibujarConexiones() {
     var svg = document.getElementById('capa-conexiones');
     if (!svg) return;
@@ -578,7 +595,6 @@ function dibujarConexiones() {
                 if (!pB && pA) { pB = { x: 0, y: pA.y }; extB = true; }
                 if (!pA || !pB) return;
 
-                // 🔧 NUEVO: convertir centros en puntos de borde
                 var cA = { x: pA.x, y: pA.y };
                 var cB = { x: pB.x, y: pB.y };
                 if (repA) pA = puntoBorde(repA, cA.x, cA.y, cB.x, cB.y);
@@ -710,6 +726,9 @@ function mostrarFormulario(tipo, padre) {
         html += '<div id="secTrans" style="display:none;margin-top:10px;padding:10px;background:#f0f4f8;border-radius:6px;">';
         html += '<p style="color:#555;">Los transceiver no requieren datos adicionales.</p>';
         html += '</div>';
+
+        // 🔧 NUEVO: prioridad para equipos
+        html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
     }
     else if (tipo === 'servicio') {
         html += '<label>Tipo de servicio</label><select id="fTipoServ">' +
@@ -717,6 +736,8 @@ function mostrarFormulario(tipo, padre) {
                 '<option value="firewall">Firewall</option><option value="servidor">Servidor</option></select>';
         html += '<label>Descripción *</label><input type="text" id="fDescripcion">';
         html += '<label>IP *</label><input type="text" id="fIP" value="192.168.1.">';
+        // 🔧 NUEVO: prioridad para servicios
+        html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
     }
     else if (tipo === 'pc') {
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin-bottom:10px;">— Datos de la PC —</h4>';
@@ -724,6 +745,8 @@ function mostrarFormulario(tipo, padre) {
         html += '<label>Descripción *</label><input type="text" id="fDescripcion" placeholder="Ej: PC Contabilidad">';
         html += '<label>IP *</label><input type="text" id="fIP" placeholder="Ej: 192.168.1.100">';
         html += '<label>Sistemas que atiende</label><textarea id="fSistemas" rows="3" placeholder="Ej: Sistema Contable, ERP"></textarea>';
+        // 🔧 NUEVO: prioridad para PCs
+        html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Luego usa 🔌 Conectar para enlazarla a un switch.</p>';
     }
     else {
@@ -788,6 +811,7 @@ function mostrarFormulario(tipo, padre) {
                 modelo: modelo,
                 fecha_instalacion: new Date().toISOString(),
                 ubicacion: val('fUbic'),
+                prioridad: val('fPrioridad') || 'baja',  // 🔧 NUEVO
                 x: 50 + Math.floor(Math.random() * 150),
                 y: 50 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
@@ -826,6 +850,7 @@ function mostrarFormulario(tipo, padre) {
                 descripcion: descripcion,
                 nombre: descripcion,
                 ip: val('fIP'),
+                prioridad: val('fPrioridad') || 'baja',  // 🔧 NUEVO
                 x: 50 + Math.floor(Math.random() * 150),
                 y: 50 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
@@ -852,6 +877,7 @@ function mostrarFormulario(tipo, padre) {
                 pr: prPC,
                 ip: ipPC,
                 sistemas_atiende: val('fSistemas'),
+                prioridad: val('fPrioridad') || 'baja',  // 🔧 NUEVO
                 x: 60 + Math.floor(Math.random() * 150),
                 y: 60 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
@@ -882,7 +908,6 @@ function mostrarFormularioConexion(a, b) {
     var nombreB = b.descripcion || b.nombre;
     var hayPC = esPC(a.tipo) || esPC(b.tipo);
 
-    // ---- Reglas cuando hay una PC ----
     if (esPC(a.tipo) && esPC(b.tipo)) {
         abrirModal('🔌 CONEXIÓN INVÁLIDA', '<p style="color:red;">No se puede conectar una PC directamente con otra PC. Una PC se conecta a un switch o modem.</p><button class="btn-del" id="btnCerrarErr" style="margin-top:15px;">Cerrar</button>');
         document.getElementById('btnCerrarErr').addEventListener('click', cerrarModal);
@@ -984,7 +1009,6 @@ function mostrarFormularioConexion(a, b) {
             return;
         }
 
-        // ---- Caso equipo ↔ equipo ----
         var elA = document.getElementById('fPuertoA');
         var elB = document.getElementById('fPuertoB');
         var pA = elA ? parseInt(elA.value, 10) : null;
@@ -1033,6 +1057,7 @@ function mostrarFormularioConexion(a, b) {
         renderizar();
     });
 }
+
 function mostrarModalEdicion(obj) {
     var nombreActual = obj.descripcion || obj.nombre || '';
     var html = '<p id="msgErrorEdit" style="color:red;font-size:12px;"></p>';
@@ -1076,6 +1101,11 @@ function mostrarModalEdicion(obj) {
     }
     if (esPC(obj.tipo)) {
         html += '<label>Sistemas que atiende</label><textarea id="eSistemas" rows="3">' + (obj.sistemas_atiende || '') + '</textarea>';
+    }
+
+    // 🔧 NUEVO: selector de prioridad en edición (equipos, servicios, PCs)
+    if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
+        html += '<label>Prioridad de alertas</label><select id="ePrioridad">' + opcionesPrioridad(obj.prioridad || 'baja') + '</select>';
     }
 
     html += '<div style="display:flex;gap:10px;margin-top:20px;">' +
@@ -1178,6 +1208,12 @@ function mostrarModalEdicion(obj) {
 
         if (esPC(obj.tipo)) {
             if (val('eSistemas') !== (obj.sistemas_atiende || '')) cambios.sistemas_atiende = val('eSistemas');
+        }
+
+        // 🔧 NUEVO: capturar cambio de prioridad
+        var ePrio = document.getElementById('ePrioridad');
+        if (ePrio && val('ePrioridad') !== (obj.prioridad || 'baja')) {
+            cambios.prioridad = val('ePrioridad');
         }
 
         var hayCambios = false;
@@ -1391,7 +1427,6 @@ document.addEventListener('mouseup', function () {
         if (a.moved) {
             guardar();
         } else if (esEquipo(a.obj.tipo) || esServicio(a.obj.tipo) || esPC(a.obj.tipo)) {
-            // Clic sin arrastre → abre el modal de edición
             mostrarModalEdicion(a.obj);
         }
     }
@@ -1426,6 +1461,8 @@ function mostrarPanel(obj) {
             html += '<p>Puertos fibra: ' + (obj.puertos_fibra_en_uso || 0) + '/' + (obj.puertos_fibra || 0) +
                     ' — ethernet: ' + (obj.puertos_ethernet_en_uso || 0) + '/' + (obj.puertos_ethernet || 0) + '</p>';
         }
+        // 🔧 NUEVO: mostrar prioridad actual
+        html += '<p style="margin-top:6px;"><strong>Prioridad de alertas:</strong> ' + (obj.prioridad || 'baja') + '</p>';
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Haz clic sobre el elemento (sin arrastrar) para editar sus datos.</p>';
         html += '<button class="btn-add" id="btnEditarModal">✏️ Editar datos</button>';
     }
@@ -1531,6 +1568,38 @@ function eliminarPorId(id) {
             datos.unidades.splice(i, 1);
             return;
         }
+    }
+}
+// ================= ESTADO DEL MONITOR =================
+var estadosRemotos = {};
+
+function estadoDe(id) {
+    var e = estadosRemotos[id];
+    return e ? e.estado : null;
+}
+
+function cargarEstados() {
+    fetch('/api/estados', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            estadosRemotos = data || {};
+            actualizarIndicadores();
+            dibujarConexiones();
+        })
+        .catch(function () { /* el backend aún no tiene el monitor activo */ });
+}
+
+function actualizarIndicadores() {
+    var lista = listaActual();
+    for (var i = 0; i < lista.length; i++) {
+        var obj = lista[i];
+        var el = document.querySelector('.elemento[data-id="' + obj.id + '"]');
+        if (!el) continue;
+        var dot = el.querySelector('.estado-indicador');
+        if (!dot) continue;
+        var st = estadoDe(obj.id) || 'desconocido';
+        dot.className = 'estado-indicador estado-' + st;
+        dot.title = 'Estado: ' + st;
     }
 }
 
