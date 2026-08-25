@@ -1,1 +1,3162 @@
-{}
+{
+  "switch-1787315898203": {
+    "estado": "offline",
+    "intentos": 45,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692572954,
+      "ok": false,
+      "ms": -1,
+      "detalle": "sin respuesta a ping"
+    },
+    "historial": [
+      {
+        "t": 1787676429931,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787676553455,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787677029929,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787677153449,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787677629951,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787677753474,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787678229952,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787678353478,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787678829969,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787678953499,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787679429963,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787679553530,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787680029973,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787680153501,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787680629979,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787680753500,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682091750,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682215272,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682386698,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682510223,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682686713,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682810238,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787682999631,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683119750,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683299676,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683419791,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683599652,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683719776,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683899668,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684019768,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684199688,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684319815,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684499670,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684619815,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684799708,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684919820,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685099685,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685219820,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685399678,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685519801,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685638333,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685761870,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685936733,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686060255,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686236735,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686360258,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686536749,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686660277,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686836769,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787686960291,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687136765,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687260280,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687335832,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687354356,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687477880,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687649341,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687772857,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787687949341,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688072859,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688249351,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688372862,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688549348,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688672875,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688849367,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787688972893,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787689149362,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787689272884,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787689449367,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787689572888,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787689749358,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787689872878,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690049381,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690172902,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690349390,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690472911,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690649388,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690772906,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787690949405,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691072919,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691249408,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691372931,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691549410,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691672916,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691849419,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787691972939,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787692149424,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787692272933,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787692449429,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787692572954,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      }
+    ]
+  },
+  "switch-1787315934419": {
+    "estado": "offline",
+    "intentos": 2,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787677156058,
+      "ok": false,
+      "ms": 56,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787676432970,
+        "ok": false,
+        "ms": 34,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787676556009,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677032989,
+        "ok": false,
+        "ms": 46,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677156058,
+        "ok": false,
+        "ms": 56,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "switch-1787319902253": {
+    "estado": "offline",
+    "intentos": 2,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787677159070,
+      "ok": false,
+      "ms": 20,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787676436028,
+        "ok": false,
+        "ms": 45,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787676559093,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677036035,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677159070,
+        "ok": false,
+        "ms": 20,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "switch-1787580815113": {
+    "estado": "offline",
+    "intentos": 2,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787677162117,
+      "ok": false,
+      "ms": 31,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787676439101,
+        "ok": false,
+        "ms": 67,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787676562147,
+        "ok": false,
+        "ms": 32,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677039075,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677162117,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "switch-1787580844425": {
+    "estado": "offline",
+    "intentos": 2,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787677165154,
+      "ok": false,
+      "ms": 29,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787676442132,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787676565186,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677042107,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677165154,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "bd-1787319932044": {
+    "estado": "offline",
+    "intentos": 2,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787677168125,
+      "ok": false,
+      "ms": 0,
+      "detalle": "Listener Oracle (1521) caído"
+    },
+    "historial": [
+      {
+        "t": 1787676445136,
+        "ok": false,
+        "ms": 0,
+        "detalle": "Listener Oracle (1521) caído"
+      },
+      {
+        "t": 1787676568153,
+        "ok": false,
+        "ms": 0,
+        "detalle": "Listener Oracle (1521) caído"
+      },
+      {
+        "t": 1787677045112,
+        "ok": false,
+        "ms": 0,
+        "detalle": "Listener Oracle (1521) caído"
+      },
+      {
+        "t": 1787677168125,
+        "ok": false,
+        "ms": 0,
+        "detalle": "Listener Oracle (1521) caído"
+      }
+    ]
+  },
+  "servidor-1787675443196": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692451529,
+      "ok": true,
+      "ms": 0,
+      "detalle": "puerto 22 abierto"
+    },
+    "historial": [
+      {
+        "t": 1787676445138,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787677045113,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787677629953,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787678229953,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787678829969,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787679429964,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787680029974,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787680630030,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787682091786,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787682386729,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787682686741,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787683001453,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787683301460,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787683601463,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787683901463,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787684201464,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787684501466,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787684801449,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787685101459,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787685401448,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787685639962,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787685936778,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787686236765,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787686536787,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787686838867,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787687138857,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787687337944,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787687356470,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787687651437,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787687951424,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787688251449,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787688551442,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787688851460,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787689151463,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787689451480,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787689751459,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787690051482,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787690351489,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787690651488,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787690951513,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787691251505,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787691551518,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787691851597,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787692151529,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      },
+      {
+        "t": 1787692451529,
+        "ok": true,
+        "ms": 0,
+        "detalle": "puerto 22 abierto"
+      }
+    ]
+  },
+  "pc-1787595877159": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787677045142,
+      "ok": true,
+      "ms": 29,
+      "detalle": "ping ok"
+    },
+    "historial": [
+      {
+        "t": 1787676445195,
+        "ok": true,
+        "ms": 57,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787677045142,
+        "ok": true,
+        "ms": 29,
+        "detalle": "ping ok"
+      }
+    ]
+  },
+  "switch-1787585040027": {
+    "estado": "offline",
+    "intentos": 45,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692577649,
+      "ok": false,
+      "ms": 48,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787676448221,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787676571257,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677048194,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677171243,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677633002,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677756049,
+        "ok": false,
+        "ms": 32,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678233018,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678356082,
+        "ok": false,
+        "ms": 57,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678833016,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678956066,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787679433012,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787679556056,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680033042,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680156072,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680633088,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680756126,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682094847,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682217881,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682389787,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682512826,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682689795,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682812855,
+        "ok": false,
+        "ms": 37,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683004516,
+        "ok": false,
+        "ms": 32,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683127554,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683304528,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683427590,
+        "ok": false,
+        "ms": 40,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683604516,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683727577,
+        "ok": false,
+        "ms": 40,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683904525,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684027590,
+        "ok": false,
+        "ms": 39,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684204526,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684327581,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684504519,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684627575,
+        "ok": false,
+        "ms": 40,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684804513,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684927570,
+        "ok": false,
+        "ms": 39,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685104513,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685227574,
+        "ok": false,
+        "ms": 34,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685404507,
+        "ok": false,
+        "ms": 32,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685526452,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685643044,
+        "ok": false,
+        "ms": 44,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685766092,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685939824,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686062869,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686239820,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686362847,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686539838,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686662872,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686841923,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686964981,
+        "ok": false,
+        "ms": 34,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687141913,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687264954,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687341018,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687359540,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687482600,
+        "ok": false,
+        "ms": 38,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687654499,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687777528,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687954483,
+        "ok": false,
+        "ms": 38,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688077526,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688254507,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688377541,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688554500,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688677541,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688854512,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688977562,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689154513,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689277561,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689454527,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689577567,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689754507,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689877541,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690054538,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690177578,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690354535,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690477578,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690654587,
+        "ok": false,
+        "ms": 66,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690777631,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690954562,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691077598,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691254550,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691377590,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691554575,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691677609,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691854644,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691977684,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692154582,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692277635,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692454591,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692577649,
+        "ok": false,
+        "ms": 48,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "switch-1787580531809": {
+    "estado": "offline",
+    "intentos": 45,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692580705,
+      "ok": false,
+      "ms": 49,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787676451262,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787676574297,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677051226,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677174286,
+        "ok": false,
+        "ms": 42,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677636040,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787677759084,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678236056,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678359112,
+        "ok": false,
+        "ms": 38,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678836058,
+        "ok": false,
+        "ms": 37,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787678959107,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787679436040,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787679559092,
+        "ok": false,
+        "ms": 37,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680036077,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680159118,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680636129,
+        "ok": false,
+        "ms": 37,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787680759157,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682097892,
+        "ok": false,
+        "ms": 35,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682220926,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682392824,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682515860,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682692832,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787682815877,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683006445,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683129495,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683307580,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683429451,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683607565,
+        "ok": false,
+        "ms": 39,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683730615,
+        "ok": false,
+        "ms": 42,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787683906461,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684029513,
+        "ok": false,
+        "ms": 34,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684207580,
+        "ok": false,
+        "ms": 39,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684329453,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684507570,
+        "ok": false,
+        "ms": 39,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684630625,
+        "ok": false,
+        "ms": 49,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684807564,
+        "ok": false,
+        "ms": 37,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787684929454,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685107564,
+        "ok": false,
+        "ms": 45,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685229444,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685407543,
+        "ok": false,
+        "ms": 34,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685530606,
+        "ok": false,
+        "ms": 36,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685646101,
+        "ok": false,
+        "ms": 42,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685769142,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787685942852,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686065890,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686242845,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686365887,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686542872,
+        "ok": false,
+        "ms": 28,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686665903,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686844961,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686967996,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687144961,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687268005,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687344051,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687362574,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687485625,
+        "ok": false,
+        "ms": 29,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687657536,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687780577,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687957517,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688080563,
+        "ok": false,
+        "ms": 30,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688257541,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688380576,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688557524,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688680556,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688857545,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688980592,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689157543,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689280592,
+        "ok": false,
+        "ms": 31,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689457563,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689580586,
+        "ok": false,
+        "ms": 20,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689757531,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689880571,
+        "ok": false,
+        "ms": 33,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690057562,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690180600,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690357572,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690480615,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690657622,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690780666,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690957595,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691080637,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691257581,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691380624,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691557610,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691680649,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691857674,
+        "ok": false,
+        "ms": 27,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691980729,
+        "ok": false,
+        "ms": 35,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692157615,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692280652,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692457629,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692580705,
+        "ok": false,
+        "ms": 49,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "pc-1787676813907": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692451553,
+      "ok": true,
+      "ms": 24,
+      "detalle": "ping ok"
+    },
+    "historial": [
+      {
+        "t": 1787677045168,
+        "ok": true,
+        "ms": 26,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787677629974,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787678229982,
+        "ok": true,
+        "ms": 29,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787678829991,
+        "ok": true,
+        "ms": 22,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787679429984,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787680030006,
+        "ok": true,
+        "ms": 32,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787680630053,
+        "ok": true,
+        "ms": 23,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787682091806,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787682386752,
+        "ok": true,
+        "ms": 23,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787682686762,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787683001471,
+        "ok": true,
+        "ms": 18,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787683301494,
+        "ok": true,
+        "ms": 34,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787683601482,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787683901482,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787684201484,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787684501487,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787684801470,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787685101478,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787685401468,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787685639991,
+        "ok": true,
+        "ms": 29,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787685936795,
+        "ok": true,
+        "ms": 17,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787686236784,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787686536804,
+        "ok": true,
+        "ms": 17,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787686838887,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787687138879,
+        "ok": true,
+        "ms": 22,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787687337977,
+        "ok": true,
+        "ms": 32,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787687356510,
+        "ok": true,
+        "ms": 40,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787687651457,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787687951444,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787688251468,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787688551462,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787688851478,
+        "ok": true,
+        "ms": 18,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787689151483,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787689451498,
+        "ok": true,
+        "ms": 18,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787689751478,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787690051505,
+        "ok": true,
+        "ms": 23,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787690351507,
+        "ok": true,
+        "ms": 18,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787690651510,
+        "ok": true,
+        "ms": 22,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787690951530,
+        "ok": true,
+        "ms": 17,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787691251525,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787691551538,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787691851617,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787692151549,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787692451553,
+        "ok": true,
+        "ms": 24,
+        "detalle": "ping ok"
+      }
+    ]
+  },
+  "switch-1787680176116": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692449454,
+      "ok": true,
+      "ms": 21,
+      "detalle": "ping ok + ssh ok"
+    },
+    "historial": [
+      {
+        "t": 1787680630029,
+        "ok": true,
+        "ms": 33,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787682091785,
+        "ok": true,
+        "ms": 30,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787682386728,
+        "ok": true,
+        "ms": 25,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787682686738,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787683001452,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683123446,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683301452,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683423460,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683601462,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683723450,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787683901461,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684023455,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684201456,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684323451,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684501460,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684623447,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684801448,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787684923453,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685101458,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685223446,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685401447,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685523455,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685639957,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787685759994,
+        "ok": true,
+        "ms": 25,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787685936765,
+        "ok": true,
+        "ms": 28,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787686236764,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787686536786,
+        "ok": true,
+        "ms": 33,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787686836795,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787687136789,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787687335862,
+        "ok": true,
+        "ms": 26,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787687354387,
+        "ok": true,
+        "ms": 27,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787687649371,
+        "ok": true,
+        "ms": 25,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787687949364,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787688249389,
+        "ok": true,
+        "ms": 29,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787688549372,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787688849392,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787689149386,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787689449393,
+        "ok": true,
+        "ms": 22,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787689749385,
+        "ok": true,
+        "ms": 23,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787690049412,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787690349411,
+        "ok": true,
+        "ms": 17,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787690649415,
+        "ok": true,
+        "ms": 18,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787690949445,
+        "ok": true,
+        "ms": 35,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787691249432,
+        "ok": true,
+        "ms": 17,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787691549435,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787691849510,
+        "ok": true,
+        "ms": 31,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787692149449,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787692449454,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      }
+    ]
+  },
+  "switch-1787686775851": {
+    "estado": "offline",
+    "intentos": 21,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787692573604,
+      "ok": false,
+      "ms": 25,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787686838866,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787686960942,
+        "ok": false,
+        "ms": 20,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687138855,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687260928,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687337943,
+        "ok": false,
+        "ms": 24,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687356468,
+        "ok": false,
+        "ms": 21,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687478544,
+        "ok": false,
+        "ms": 22,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687651436,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687773524,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787687951423,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688073514,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688251449,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688373517,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688551442,
+        "ok": false,
+        "ms": 23,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688673514,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688851459,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787688973546,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689151462,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689273549,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689451479,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689573570,
+        "ok": false,
+        "ms": 34,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689751459,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787689873566,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690051480,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690173556,
+        "ok": false,
+        "ms": 17,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690351489,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690473564,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690651487,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690773582,
+        "ok": false,
+        "ms": 17,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787690951512,
+        "ok": false,
+        "ms": 17,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691073605,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691251505,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691373586,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691551514,
+        "ok": false,
+        "ms": 20,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691673587,
+        "ok": false,
+        "ms": 20,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691851596,
+        "ok": false,
+        "ms": 39,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787691973669,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692151528,
+        "ok": false,
+        "ms": 19,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692273600,
+        "ok": false,
+        "ms": 26,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692451527,
+        "ok": false,
+        "ms": 18,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787692573604,
+        "ok": false,
+        "ms": 25,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "switch-1787692526413": {
+    "estado": "offline",
+    "intentos": 1,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787694970248,
+      "ok": false,
+      "ms": 38,
+      "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+    },
+    "historial": [
+      {
+        "t": 1787692745950,
+        "ok": true,
+        "ms": 26,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787693045957,
+        "ok": true,
+        "ms": 24,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787693345964,
+        "ok": true,
+        "ms": 24,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787693645970,
+        "ok": true,
+        "ms": 25,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787693945967,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787694246006,
+        "ok": true,
+        "ms": 50,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787694546044,
+        "ok": true,
+        "ms": 57,
+        "detalle": "ping ok"
+      },
+      {
+        "t": 1787694848107,
+        "ok": false,
+        "ms": 51,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      },
+      {
+        "t": 1787694970248,
+        "ok": false,
+        "ms": 38,
+        "detalle": "ping OK pero SSH (22) no responde: problema de conectividad/configuración"
+      }
+    ]
+  },
+  "switch-1787692816022": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787694848134,
+      "ok": true,
+      "ms": 24,
+      "detalle": "ping ok + ssh ok"
+    },
+    "historial": [
+      {
+        "t": 1787693047956,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787693169945,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787693347954,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787693469955,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787693647945,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787693769954,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1787693946008,
+        "ok": true,
+        "ms": 36,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787694246040,
+        "ok": true,
+        "ms": 32,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787694546068,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787694848134,
+        "ok": true,
+        "ms": 24,
+        "detalle": "ping ok + ssh ok"
+      }
+    ]
+  },
+  "switch-1787693306270": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1787694848158,
+      "ok": true,
+      "ms": 20,
+      "detalle": "ping ok + ssh ok"
+    },
+    "historial": [
+      {
+        "t": 1787693347976,
+        "ok": true,
+        "ms": 19,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787693647972,
+        "ok": true,
+        "ms": 23,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787693946034,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787694246080,
+        "ok": true,
+        "ms": 36,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787694546096,
+        "ok": true,
+        "ms": 21,
+        "detalle": "ping ok + ssh ok"
+      },
+      {
+        "t": 1787694848158,
+        "ok": true,
+        "ms": 20,
+        "detalle": "ping ok + ssh ok"
+      }
+    ]
+  }
+}

@@ -27,9 +27,9 @@ interface Estado {
 let topologia: any = null;
 const estados: Record<string, Estado> = {};
 
-const INTERVALO_NORMAL = parseInt(process.env.MONITOR_INTERVALO_MIN || '10', 10) * 60 * 1000;
+const INTERVALO_NORMAL = parseInt(process.env.MONITOR_INTERVALO_MIN || '5', 10) * 60 * 1000;
 const INTERVALO_REINTENTO = parseInt(process.env.MONITOR_REINTENTO_MIN || '2', 10) * 60 * 1000;
-
+const TOPO_FILE = path.join(__dirname, '../db/topologia_sync.json');
 const PUERTOS_SERVICIO: Record<string, number> = {
     bd: 1521,
     dns: 53,
@@ -39,6 +39,11 @@ const PUERTOS_SERVICIO: Record<string, number> = {
 
 export function setTopologia(t: any) {
     topologia = t;
+    try {
+        fs.writeFileSync(TOPO_FILE, JSON.stringify(t));
+    } catch (e) {
+        console.error('[MONITOR] No se pudo persistir topología:', e);
+    }
 }
 
 export function getEstados() {
@@ -246,7 +251,33 @@ async function ciclo() {
 }
 
 export function iniciarMonitor() {
+    // 🔧 Recuperar topología persistida
+    try {
+        if (fs.existsSync(TOPO_FILE)) {
+            topologia = JSON.parse(fs.readFileSync(TOPO_FILE, 'utf8'));
+            console.log('[MONITOR] Topología recuperada desde disco');
+        }
+    } catch (e) {
+        console.error('[MONITOR] No se pudo leer topología:', e);
+    }
+
+    // 🔧 Recuperar últimos estados conocidos (el mapa no queda gris al reiniciar)
+    try {
+        const HIST_FILE = path.join(__dirname, '../db/historial_estados.json');
+        if (fs.existsSync(HIST_FILE)) {
+            const prev = JSON.parse(fs.readFileSync(HIST_FILE, 'utf8'));
+            var claves = Object.keys(prev);
+            for (var i = 0; i < claves.length; i++) {
+                prev[claves[i]].reintentoProgramado = false; // limpia flags viejos
+                estados[claves[i]] = prev[claves[i]];
+            }
+            console.log('[MONITOR] Estados previos cargados: ' + claves.length);
+        }
+    } catch (e) {
+        console.error('[MONITOR] No se pudo leer historial de estados:', e);
+    }
+
     setTimeout(ciclo, 5000);
     setInterval(ciclo, INTERVALO_NORMAL);
-    console.log(`[MONITOR] Iniciado: ciclo ${INTERVALO_NORMAL / 60000} min, reintento ${INTERVALO_REINTENTO / 60000} min`);
+    console.log('[MONITOR] Iniciado: ciclo ' + (INTERVALO_NORMAL / 60000) + ' min, reintento ' + (INTERVALO_REINTENTO / 60000) + ' min');
 }

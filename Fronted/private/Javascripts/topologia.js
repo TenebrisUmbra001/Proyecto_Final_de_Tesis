@@ -31,6 +31,23 @@ var VEL_MBPS = {
 
 var tiempoAnim = 0;
 
+// ================= PERMISOS POR ROL =================
+var rolUsuario = null;
+
+function puedeEditar() {
+    return rolUsuario === 'superadmin' || rolUsuario === 'admin';
+}
+
+function aplicarPermisos() {
+    var btnCon = document.getElementById('btnConectar');
+    if (btnCon) btnCon.style.display = puedeEditar() ? '' : 'none';
+
+    var estado = document.getElementById('estadoConexion');
+    if (estado && !puedeEditar()) estado.textContent = '👁️ Modo lectura (solo consulta)';
+
+    actualizarBarraAgregar();
+}
+
 function iniciarAnimacionConexiones() {
     setInterval(function () {
         tiempoAnim += 0.012;
@@ -147,24 +164,281 @@ function migrarPCsAntiguas() {
 
 // ================= UTILIDADES =================
 function esContenedor(tipo) { return tipo === 'unidad' || tipo === 'edificio' || tipo === 'local'; }
-function esEquipo(tipo)   { return tipo === 'switch' || tipo === 'modem' || tipo === 'transceiver'; }
+function esEquipo(tipo) { return tipo === 'switch' || tipo === 'modem' || tipo === 'transceiver'; }
 function esServicio(tipo) { return tipo === 'bd' || tipo === 'dns' || tipo === 'firewall' || tipo === 'servidor'; }
-function esPC(tipo)       { return tipo === 'pc'; }
+function esPC(tipo) { return tipo === 'pc'; }
+
+// 🧼 Escapa texto antes de inyectarlo en innerHTML (anti XSS almacenado)
+function esc(txt) {
+    return String(txt == null ? '' : txt)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// 📋 Copiar con fallback para Firefox viejo
+function copiarTexto(txt) {
+    if (!txt) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).catch(function () { fallbackCopiar(txt); });
+    } else {
+        fallbackCopiar(txt);
+    }
+}
+
+function fallbackCopiar(txt) {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+}
+
+// 📋 Pegar: usa la API si existe, si no abre un mini-modal
+function pegarTexto(cb) {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+        navigator.clipboard.readText().then(cb).catch(function () { modalPegarManual(cb); });
+    } else {
+        modalPegarManual(cb);
+    }
+}
+
+function modalPegarManual(cb) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = '<div style="background:#fff;padding:20px;border-radius:8px;width:420px;">' +
+        '<p style="margin-top:0;">Pega aquí el texto y pulsa Enviar:</p>' +
+        '<textarea id="txtPegarManual" rows="4" style="width:100%;box-sizing:border-box;"></textarea>' +
+        '<div style="display:flex;gap:10px;margin-top:10px;">' +
+        '<button id="btnEnviarPegar" class="btn-add" style="flex:1;">Enviar al terminal</button>' +
+        '<button id="btnCancelPegar" class="btn-del" style="flex:1;background:#555;">Cancelar</button></div></div>';
+    document.body.appendChild(overlay);
+    document.getElementById('btnEnviarPegar').addEventListener('click', function () {
+        var t = document.getElementById('txtPegarManual').value;
+        document.body.removeChild(overlay);
+        cb(t);
+    });
+    document.getElementById('btnCancelPegar').addEventListener('click', function () {
+        document.body.removeChild(overlay);
+    });
+    document.getElementById('txtPegarManual').focus();
+}
+
+// 🔐 Abre un cliente remoto (SSH, Web o Telnet) según el tipo de gestión
+function abrirAccesoRemoto(tipo, ip, nombreSwitch) {
+    if (!ip) return;
+
+    if (tipo === 'web') {
+        var htmlW = '<p style="margin-bottom:12px;">¿Por qué protocolo responde <strong>' + esc(nombreSwitch || ip) + '</strong>?</p>';
+        htmlW += '<label>Puerto (opcional, ej: 8080)</label>';
+        htmlW += '<input type="text" id="webPort" placeholder="vacío = puerto estándar">';
+        htmlW += '<div style="display:flex;gap:10px;margin-top:14px;">';
+        htmlW += '<button class="btn-add" id="btnWebHttps" style="flex:1;background:#27ae60;">🔒 Abrir HTTPS</button>';
+        htmlW += '<button class="btn-add" id="btnWebHttp" style="flex:1;background:#2980b9;">🌐 Abrir HTTP</button>';
+        htmlW += '</div>';
+        htmlW += '<p style="margin-top:12px;color:#555;font-size:12px;">Si la pestaña queda en blanco o «Esperando…», ciérrala y prueba el otro protocolo.</p>';
+        htmlW += '<button class="btn-del" id="btnCerrarWeb" style="margin-top:10px;background:#555;">Cerrar</button>';
+        abrirModal('🌐 Admin Web de ' + esc(nombreSwitch || ip), htmlW);
+
+        document.getElementById('btnWebHttps').addEventListener('click', function () {
+            var p = val('webPort');
+            window.open('https://' + ip + (p ? ':' + p : ''), '_blank');
+        });
+        document.getElementById('btnWebHttp').addEventListener('click', function () {
+            var p = val('webPort');
+            window.open('http://' + ip + (p ? ':' + p : ''), '_blank');
+        });
+        document.getElementById('btnCerrarWeb').addEventListener('click', cerrarModal);
+        return;
+    }
+
+    if (tipo === 'ssh') {
+        abrirConsolaSSH(ip, nombreSwitch || '');
+        return;
+    }
+
+    if (tipo === 'telnet') {
+        var cmdT = 'telnet ' + ip;
+        var modalHtmlT = '<p>Copia este comando:</p>';
+        modalHtmlT += '<div style="background:#1e1e1e;color:#0f0;padding:12px;font-family:monospace;border-radius:4px;user-select:all;">' + esc(cmdT) + '</div>';
+        modalHtmlT += '<button class="btn-add" id="btnCopiarCmdT" style="margin-top:12px;">📋 Copiar</button>';
+        modalHtmlT += '<button class="btn-del" id="btnCerrarCmdT" style="margin-top:8px;background:#555;">Cerrar</button>';
+        abrirModal('📟 Telnet a ' + esc(nombreSwitch || ip), modalHtmlT);
+        document.getElementById('btnCopiarCmdT').addEventListener('click', function () {
+            copiarTexto(cmdT);
+            this.textContent = '✔ Copiado';
+        });
+        document.getElementById('btnCerrarCmdT').addEventListener('click', cerrarModal);
+    }
+}
+
+// 🔐 Modal de login SSH y apertura de terminal integrada
+function abrirConsolaSSH(ip, nombreSwitch) {
+    var loginHtml = '<div class="login-ssh">';
+    loginHtml += '<h3 style="margin-top:0;">🔐 Acceso SSH a ' + esc(nombreSwitch) + '</h3>';
+    loginHtml += '<p style="color:#555;font-size:12px;">IP: ' + esc(ip) + '</p>';
+    loginHtml += '<label>Usuario:</label>';
+    loginHtml += '<input type="text" id="sshUser" value="admin" autocomplete="off">';
+    loginHtml += '<label>Contraseña:</label>';
+    loginHtml += '<input type="password" id="sshPass" autocomplete="off">';
+    loginHtml += '<p id="sshMsgErr" style="color:red;font-size:12px;margin-top:10px;"></p>';
+    loginHtml += '<div style="display:flex;gap:10px;margin-top:18px;">';
+    loginHtml += '<button class="btn-add" id="btnConectarSSH" style="flex:1;">Conectar</button>';
+    loginHtml += '<button class="btn-del" id="btnCancelarSSH" style="flex:1;background:#555;">Cancelar</button>';
+    loginHtml += '</div></div>';
+
+    abrirModal('SSH — ' + esc(nombreSwitch), loginHtml);
+
+    document.getElementById('btnCancelarSSH').addEventListener('click', cerrarModal);
+
+    var btnConectar = document.getElementById('btnConectarSSH');
+    btnConectar.addEventListener('click', function () {
+        var user = document.getElementById('sshUser').value.trim();
+        var pass = document.getElementById('sshPass').value;
+        var err = document.getElementById('sshMsgErr');
+        if (!user || !pass) { err.textContent = 'Usuario y contraseña obligatorios.'; return; }
+        iniciarTerminalSSH(ip, user, pass, nombreSwitch);
+    });
+
+    document.getElementById('sshPass').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') btnConectar.click();
+    });
+    document.getElementById('sshUser').focus();
+}
+
+// 🖥️ Terminal xterm.js conectada al proxy SSH del backend
+function iniciarTerminalSSH(ip, user, pass, nombreSwitch) {
+    // 🔧 Expandir el modal a tamaño de terminal
+    var caja = document.getElementById('modalCuerpo').parentElement;
+    caja.style.width = '95vw';
+    caja.style.maxWidth = '1400px';
+    caja.style.height = '92vh';
+    caja.style.maxHeight = '95vh';
+    var cuerpo = document.getElementById('modalCuerpo');
+    cuerpo.style.padding = '0';
+    cuerpo.style.overflow = 'hidden';
+
+    cuerpo.innerHTML =
+        '<div class="modal-terminal">' +
+        '<div class="barra-superior">' +
+            '<span class="titulo">🔐 ' + esc(nombreSwitch) + ' — ' + esc(ip) + '</span>' +
+            '<span class="hint-ssh">Selecciona + Ctrl+C copia · Ctrl+V pega</span>' +
+            '<button id="btnCerrarTerm">✕ Cerrar</button>' +
+        '</div>' +
+        '<div id="xterm-container"></div>' +
+        '</div>';
+
+    var term = new Terminal({
+        cursorBlink: true,
+        fontSize: 15,
+        fontFamily: 'Consolas, "Courier New", monospace',
+        theme: { background: '#1e1e1e', foreground: '#0f0', cursor: '#0f0' },
+        scrollback: 5000
+    });
+    var fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('xterm-container'));
+    setTimeout(function () { fitAddon.fit(); term.focus(); }, 120);
+
+    term.writeln('\x1b[36mConectando a ' + esc(ip) + '...\x1b[0m');
+
+    var socket = io({ path: '/ssh-proxy', transports: ['websocket', 'polling'] });
+
+    socket.on('connect', function () {
+        socket.emit('ssh-connect', { host: ip, port: 22, user: user, pass: pass });
+    });
+
+    socket.on('ssh-ready', function () {
+        term.writeln('\x1b[32m✔ Conexión establecida.\x1b[0m\r\n');
+        term.focus();
+    });
+
+    socket.on('ssh-data', function (data) { term.write(data); });
+
+    socket.on('ssh-error', function (msg) {
+        term.writeln('\r\n\x1b[31m❌ ' + esc(msg) + '\x1b[0m');
+        setTimeout(function () { cerrarModal(); socket.disconnect(); }, 3000);
+    });
+
+    socket.on('ssh-close', function (msg) {
+        term.writeln('\r\n\x1b[33m' + esc(msg) + '\x1b[0m');
+        setTimeout(function () {
+            if (document.getElementById('modal').style.display === 'flex') {
+                socket.disconnect();
+                term.dispose();
+                cerrarModal();
+            }
+        }, 2500);
+    });
+
+    term.onData(function (data) { socket.emit('ssh-input', data); });
+
+    // 🔧 COPIAR / PEGAR
+    term.attachCustomKeyEventHandler(function (ev) {
+        if (ev.type !== 'keydown') return true;
+        var k = (ev.key || '').toLowerCase();
+
+        if (ev.ctrlKey && (k === 'c') && !ev.shiftKey) {
+            if (term.hasSelection()) {
+                copiarTexto(term.getSelection());
+                ev.preventDefault();
+                return false;
+            }
+            return true;
+        }
+        if (ev.ctrlKey && (k === 'v') && !ev.shiftKey) {
+            pegarTexto(function (txt) { if (txt) socket.emit('ssh-input', txt); });
+            ev.preventDefault();
+            return false;
+        }
+        if (ev.ctrlKey && ev.shiftKey && k === 'c') {
+            copiarTexto(term.getSelection());
+            ev.preventDefault();
+            return false;
+        }
+        if (ev.ctrlKey && ev.shiftKey && k === 'v') {
+            pegarTexto(function (txt) { if (txt) socket.emit('ssh-input', txt); });
+            ev.preventDefault();
+            return false;
+        }
+        return true;
+    });
+
+    var onResize = function () {
+        try {
+            fitAddon.fit();
+            socket.emit('ssh-resize', { cols: term.cols, rows: term.rows });
+        } catch (e) {}
+    };
+    window.addEventListener('resize', onResize);
+
+    document.getElementById('btnCerrarTerm').addEventListener('click', function () {
+        window.removeEventListener('resize', onResize);
+        socket.disconnect();
+        try { term.dispose(); } catch (e) {}
+        cerrarModal();
+    });
+}
 
 function hijosDe(obj) {
-    if (obj.tipo === 'unidad')   return obj.edificios || [];
+    if (obj.tipo === 'unidad') return obj.edificios || [];
     if (obj.tipo === 'edificio') return obj.locales || [];
-    if (obj.tipo === 'local')    {
+    if (obj.tipo === 'local') {
         return (obj.sublocales || []).concat(obj.equipos || []).concat(obj.servicios || []).concat(obj.pcs || []);
     }
     return [];
 }
 
 function tamanosPorTipo(tipo) {
-    if (tipo === 'unidad')   return { w: 320, h: 240 };
+    if (tipo === 'unidad') return { w: 320, h: 240 };
     if (tipo === 'edificio') return { w: 220, h: 170 };
-    if (tipo === 'local')    return { w: 160, h: 120 };
-    if (tipo === 'pc')       return { w: 80, h: 60 };
+    if (tipo === 'local') return { w: 160, h: 120 };
+    if (tipo === 'pc') return { w: 80, h: 60 };
     return { w: 80, h: 80 };
 }
 
@@ -283,7 +557,6 @@ function opcionesVelFiltradas(velMaxima, sel) {
     return h;
 }
 
-// 🔧 NUEVO: opciones de prioridad (por defecto baja)
 function opcionesPrioridad(sel) {
     var selVal = sel || 'baja';
     return ['alta', 'media', 'baja'].map(function (p) {
@@ -292,7 +565,7 @@ function opcionesPrioridad(sel) {
 }
 
 function campo(label, nombreCampo, valor, tipo, readonly) {
-    return '<label>' + label + '</label><input type="' + (tipo || 'text') + '" data-campo="' + nombreCampo + '" value="' + (valor == null ? '' : valor) + '"' + (readonly ? ' readonly' : '') + '>';
+    return '<label>' + label + '</label><input type="' + (tipo || 'text') + '" data-campo="' + nombreCampo + '" value="' + esc(valor == null ? '' : valor) + '"' + (readonly ? ' readonly' : '') + '>';
 }
 
 function sumarPuertoEnUso(obj, medio, delta) {
@@ -348,6 +621,49 @@ function maxVelocidadConexiones(obj) {
         }
     }
     return max;
+}
+
+// ================= ESTADO DEL MONITOR =================
+var estadosRemotos = {};
+
+function estadoDe(id) {
+    var e = estadosRemotos[id];
+    return e ? e.estado : null;
+}
+
+function sincronizarTopologia() {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    fetch('/api/topologia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: raw
+    }).catch(function () { /* sin conexión con backend */ });
+}
+
+function cargarEstados() {
+    fetch('/api/estados', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            estadosRemotos = data || {};
+            actualizarIndicadores();
+            dibujarConexiones();
+        })
+        .catch(function () { /* el backend aún no tiene el monitor activo */ });
+}
+
+function actualizarIndicadores() {
+    var lista = listaActual();
+    for (var i = 0; i < lista.length; i++) {
+        var obj = lista[i];
+        var el = document.querySelector('.elemento[data-id="' + obj.id + '"]');
+        if (!el) continue;
+        var dot = el.querySelector('.estado-indicador');
+        if (!dot) continue;
+        var st = estadoDe(obj.id) || 'desconocido';
+        dot.className = 'estado-indicador estado-' + st;
+        dot.title = 'Estado: ' + st;
+    }
 }
 
 // ================= NIVELES =================
@@ -437,9 +753,21 @@ function crearNodo(obj) {
         el.appendChild(ip);
     }
 
-    var handle = document.createElement('div');
-    handle.className = 'handle';
-    el.appendChild(handle);
+    var handle = null;
+    if (puedeEditar()) {
+        handle = document.createElement('div');
+        handle.className = 'handle';
+        el.appendChild(handle);
+    }
+
+    // 🔴🟢 Indicador de estado del monitor
+    if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
+        var st = estadoDe(obj.id) || 'desconocido';
+        var dot = document.createElement('span');
+        dot.className = 'estado-indicador estado-' + st;
+        dot.title = 'Estado: ' + st;
+        el.appendChild(dot);
+    }
 
     el.addEventListener('mousedown', function (e) {
         e.stopPropagation();
@@ -454,11 +782,13 @@ function crearNodo(obj) {
             return;
         }
 
-        if (e.target === handle) {
+        if (handle && e.target === handle) {
             redimension = { obj: obj, el: el, startX: e.clientX, startY: e.clientY, w: obj.width, h: obj.height };
         } else {
             seleccionar(obj);
-            arrastre = { obj: obj, el: el, startX: e.clientX, startY: e.clientY, x: obj.x, y: obj.y, moved: false };
+            if (puedeEditar()) {
+                arrastre = { obj: obj, el: el, startX: e.clientX, startY: e.clientY, x: obj.x, y: obj.y, moved: false };
+            }
         }
     });
 
@@ -603,7 +933,15 @@ function dibujarConexiones() {
                 var objA = buscarObjPorId(con.desde);
                 var objB = buscarObjPorId(con.hasta);
 
+                var stA = estadoDe(con.desde);
+                var stB = estadoDe(con.hasta);
+                var caido = (stA === 'offline' || stB === 'offline');
+                var degradado = (!caido) && (stA === 'degradado' || stB === 'degradado');
+
                 var color = con.tipo === 'FO' ? '#ff9f1c' : '#70e000';
+                if (degradado) color = '#f39c12';
+                if (caido) color = '#e74c3c';
+
                 var grosor = (con.id === conexionSeleccionada) ? 8 : 6;
 
                 var line = document.createElementNS(SVGNS, 'line');
@@ -616,20 +954,41 @@ function dibujarConexiones() {
                 line.setAttribute('stroke-linecap', 'round');
                 line.setAttribute('pointer-events', 'none');
                 if (extA || extB) line.setAttribute('opacity', '0.6');
+
+                if (caido) line.setAttribute('stroke-dasharray', '6 8');
+                else if (degradado) line.setAttribute('stroke-dasharray', '12 6');
+
                 svg.appendChild(line);
 
-                for (var p = 0; p < 3; p++) {
-                    var c = document.createElementNS(SVGNS, 'circle');
-                    c.setAttribute('r', '3.5');
-                    c.setAttribute('class', 'paquete');
-                    c.setAttribute('data-con', con.id);
-                    c.setAttribute('data-offset', (p / 3).toFixed(2));
-                    c.setAttribute('fill', '#ffffff');
-                    c.setAttribute('pointer-events', 'none');
-                    c.setAttribute('cx', pA.x);
-                    c.setAttribute('cy', pA.y);
-                    if (extA || extB) c.setAttribute('opacity', '0.6');
-                    svg.appendChild(c);
+                if (!caido) {
+                    for (var p = 0; p < 3; p++) {
+                        var c = document.createElementNS(SVGNS, 'circle');
+                        c.setAttribute('r', '3.5');
+                        c.setAttribute('class', 'paquete');
+                        c.setAttribute('data-con', con.id);
+                        c.setAttribute('data-offset', (p / 3).toFixed(2));
+                        c.setAttribute('fill', '#ffffff');
+                        c.setAttribute('pointer-events', 'none');
+                        c.setAttribute('cx', pA.x);
+                        c.setAttribute('cy', pA.y);
+                        if (extA || extB) c.setAttribute('opacity', '0.6');
+                        svg.appendChild(c);
+                    }
+                }
+
+                if (caido) {
+                    var mx = (pA.x + pB.x) / 2;
+                    var my = (pA.y + pB.y) / 2;
+                    var xmark = document.createElementNS(SVGNS, 'text');
+                    xmark.setAttribute('x', mx);
+                    xmark.setAttribute('y', my + 6);
+                    xmark.setAttribute('text-anchor', 'middle');
+                    xmark.setAttribute('fill', '#e74c3c');
+                    xmark.setAttribute('font-size', '20');
+                    xmark.setAttribute('font-weight', 'bold');
+                    xmark.setAttribute('pointer-events', 'none');
+                    xmark.textContent = '✕';
+                    svg.appendChild(xmark);
                 }
 
                 var hit = document.createElementNS(SVGNS, 'line');
@@ -648,7 +1007,8 @@ function dibujarConexiones() {
                 var nombreB = objB ? (objB.descripcion || objB.nombre || '?') : '?';
                 var nomA = nombreA + pA_txt + (extA ? ' (fuera de esta vista)' : '');
                 var nomB = nombreB + pB_txt + (extB ? ' (fuera de esta vista)' : '');
-                title.textContent = nomA + ' ↔ ' + nomB + ' — ' + con.tipo + ' ' + con.velocidad;
+                var estadoTxt = caido ? ' — ⚠️ CAÍDO' : (degradado ? ' — ⚠️ degradado' : '');
+                title.textContent = nomA + ' ↔ ' + nomB + ' — ' + con.tipo + ' ' + con.velocidad + estadoTxt;
                 hit.appendChild(title);
 
                 hit.addEventListener('mousedown', function (e) {
@@ -670,20 +1030,37 @@ function dibujarConexiones() {
             }
         })(datos.conexiones[i]);
     }
-
-    console.log('Conexiones dibujadas en esta vista: ' + dibujadas);
 }
 
 // ================= MODAL =================
 function abrirModal(titulo, contenido) {
     var modal = document.getElementById('modal');
+    var caja = document.getElementById('modalCuerpo').parentElement;
+    var cuerpo = document.getElementById('modalCuerpo');
+
+    // 🔧 Restaurar SIEMPRE el tamaño estándar (por si quedó expandido por la terminal SSH)
+    caja.style.width = '500px';
+    caja.style.maxWidth = '90%';
+    caja.style.maxHeight = '90vh';
+    caja.style.height = '';
+    cuerpo.style.padding = '20px';
+    cuerpo.style.overflowY = 'auto';
+
     document.getElementById('modalTitulo').textContent = titulo;
-    document.getElementById('modalCuerpo').innerHTML = contenido;
+    cuerpo.innerHTML = contenido;
     modal.style.display = 'flex';
 }
 
 function cerrarModal() {
     document.getElementById('modal').style.display = 'none';
+    var caja = document.getElementById('modalCuerpo').parentElement;
+    caja.style.width = '500px';
+    caja.style.maxWidth = '90%';
+    caja.style.maxHeight = '90vh';
+    caja.style.height = '';
+    var cuerpo = document.getElementById('modalCuerpo');
+    cuerpo.style.padding = '20px';
+    cuerpo.style.overflowY = 'auto';
 }
 
 // ================= FORMULARIO DE CREACIÓN =================
@@ -703,15 +1080,15 @@ function mostrarFormulario(tipo, padre) {
 
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin:15px 0 10px 0;">— Tipo de equipo —</h4>';
         html += '<label>Tipo</label><select id="fTipo">' +
-                '<option value="switch">Switch</option>' +
-                '<option value="modem">Modem</option>' +
-                '<option value="transceiver">Transceiver</option></select>';
+            '<option value="switch">Switch</option>' +
+            '<option value="modem">Modem</option>' +
+            '<option value="transceiver">Transceiver</option></select>';
 
         html += '<div id="secSwitch" style="margin-top:10px;padding:10px;background:#f0f4f8;border-radius:6px;">';
         html += '<h4 style="margin-bottom:8px;color:#0f3460;">Datos del switch</h4>';
         html += '<label>IP *</label><input type="text" id="fIP" value="192.168.1.">';
         html += '<label>Tipo de gestión</label><select id="fTipoGestion">' +
-                '<option>SSH</option><option>Telnet</option><option>Web</option><option>No gestionable</option></select>';
+            '<option>SSH</option><option>Telnet</option><option>Web</option><option>No gestionable</option></select>';
         html += '<label>Velocidad de enlace</label><select id="fVelEnlace">' + opcionesVel('1 Gbps') + '</select>';
         html += '<label>Puertos de fibra</label><input type="number" id="fPuertosFibra" value="0" min="0">';
         html += '<label>Puertos ethernet</label><input type="number" id="fPuertosEth" value="24" min="0">';
@@ -727,16 +1104,14 @@ function mostrarFormulario(tipo, padre) {
         html += '<p style="color:#555;">Los transceiver no requieren datos adicionales.</p>';
         html += '</div>';
 
-        // 🔧 NUEVO: prioridad para equipos
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
     }
     else if (tipo === 'servicio') {
         html += '<label>Tipo de servicio</label><select id="fTipoServ">' +
-                '<option value="bd">Base de datos</option><option value="dns">DNS</option>' +
-                '<option value="firewall">Firewall</option><option value="servidor">Servidor</option></select>';
+            '<option value="bd">Base de datos</option><option value="dns">DNS</option>' +
+            '<option value="firewall">Firewall</option><option value="servidor">Servidor</option></select>';
         html += '<label>Descripción *</label><input type="text" id="fDescripcion">';
         html += '<label>IP *</label><input type="text" id="fIP" value="192.168.1.">';
-        // 🔧 NUEVO: prioridad para servicios
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
     }
     else if (tipo === 'pc') {
@@ -745,7 +1120,6 @@ function mostrarFormulario(tipo, padre) {
         html += '<label>Descripción *</label><input type="text" id="fDescripcion" placeholder="Ej: PC Contabilidad">';
         html += '<label>IP *</label><input type="text" id="fIP" placeholder="Ej: 192.168.1.100">';
         html += '<label>Sistemas que atiende</label><textarea id="fSistemas" rows="3" placeholder="Ej: Sistema Contable, ERP"></textarea>';
-        // 🔧 NUEVO: prioridad para PCs
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Luego usa 🔌 Conectar para enlazarla a un switch.</p>';
     }
@@ -765,9 +1139,9 @@ function mostrarFormulario(tipo, padre) {
     }
 
     var botones = '<div style="display:flex;gap:10px;margin-top:20px;">' +
-                  '<button class="btn-add" id="btnConfirmarCrear" style="flex:1;">Crear</button>' +
-                  '<button class="btn-del" id="btnCancelarCrear" style="flex:1;">Cancelar</button>' +
-                  '</div>';
+        '<button class="btn-add" id="btnConfirmarCrear" style="flex:1;">Crear</button>' +
+        '<button class="btn-del" id="btnCancelarCrear" style="flex:1;">Cancelar</button>' +
+        '</div>';
     document.getElementById('modalCuerpo').innerHTML += botones;
 
     document.getElementById('btnCancelarCrear').addEventListener('click', cerrarModal);
@@ -811,7 +1185,7 @@ function mostrarFormulario(tipo, padre) {
                 modelo: modelo,
                 fecha_instalacion: new Date().toISOString(),
                 ubicacion: val('fUbic'),
-                prioridad: val('fPrioridad') || 'baja',  // 🔧 NUEVO
+                prioridad: val('fPrioridad') || 'baja',
                 x: 50 + Math.floor(Math.random() * 150),
                 y: 50 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
@@ -850,7 +1224,7 @@ function mostrarFormulario(tipo, padre) {
                 descripcion: descripcion,
                 nombre: descripcion,
                 ip: val('fIP'),
-                prioridad: val('fPrioridad') || 'baja',  // 🔧 NUEVO
+                prioridad: val('fPrioridad') || 'baja',
                 x: 50 + Math.floor(Math.random() * 150),
                 y: 50 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
@@ -877,7 +1251,7 @@ function mostrarFormulario(tipo, padre) {
                 pr: prPC,
                 ip: ipPC,
                 sistemas_atiende: val('fSistemas'),
-                prioridad: val('fPrioridad') || 'baja',  // 🔧 NUEVO
+                prioridad: val('fPrioridad') || 'baja',
                 x: 60 + Math.floor(Math.random() * 150),
                 y: 60 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
@@ -919,46 +1293,46 @@ function mostrarFormularioConexion(a, b) {
         pc = esPC(a.tipo) ? a : b;
         otro = esPC(a.tipo) ? b : a;
         if (!esEquipo(otro.tipo)) {
-            abrirModal('🔌 CONEXIÓN INVÁLIDA', '<p style="color:red;">La PC solo puede conectarse a un switch o un modem, no a: ' + (otro.descripcion || otro.nombre) + '.</p><button class="btn-del" id="btnCerrarErr" style="margin-top:15px;">Cerrar</button>');
+            abrirModal('🔌 CONEXIÓN INVÁLIDA', '<p style="color:red;">La PC solo puede conectarse a un switch o un modem, no a: ' + esc(otro.descripcion || otro.nombre) + '.</p><button class="btn-del" id="btnCerrarErr" style="margin-top:15px;">Cerrar</button>');
             document.getElementById('btnCerrarErr').addEventListener('click', cerrarModal);
             return;
         }
         if (pcYaConectada(pc.id, null)) {
-            abrirModal('🔌 CONEXIÓN INVÁLIDA', '<p style="color:red;">La PC "' + (pc.descripcion || pc.nombre) + '" ya tiene una conexión. Elimínala primero.</p><button class="btn-del" id="btnCerrarErr" style="margin-top:15px;">Cerrar</button>');
+            abrirModal('🔌 CONEXIÓN INVÁLIDA', '<p style="color:red;">La PC "' + esc(pc.descripcion || pc.nombre) + '" ya tiene una conexión. Elimínala primero.</p><button class="btn-del" id="btnCerrarErr" style="margin-top:15px;">Cerrar</button>');
             document.getElementById('btnCerrarErr').addEventListener('click', cerrarModal);
             return;
         }
     }
 
     var html = '<p id="msgErrorCon" style="color:red;font-size:12px;"></p>';
-    html += '<p><strong>Desde:</strong> ' + nombreA + '</p>';
-    html += '<p><strong>Hasta:</strong> ' + nombreB + '</p>';
+    html += '<p><strong>Desde:</strong> ' + esc(nombreA) + '</p>';
+    html += '<p><strong>Hasta:</strong> ' + esc(nombreB) + '</p>';
 
     if (hayPC) {
         html += '<label>Medio</label><select id="fTipoCon" disabled><option value="Ethernet" selected>Ethernet (obligatorio para PC)</option></select>';
         var velBasePC = (otro.tipo === 'switch') ? (otro.velocidad_enlace || '1 Gbps') : '100 Mbps';
         html += '<label>Velocidad</label><select id="fVelCon">' + opcionesVelFiltradas(velBasePC, '100 Mbps') + '</select>';
-        html += '<label>Puerto en ' + (otro.descripcion || otro.nombre) + ' *</label><input type="number" id="fPuertoEq" min="1">';
+        html += '<label>Puerto en ' + esc(otro.descripcion || otro.nombre) + ' *</label><input type="number" id="fPuertoEq" min="1">';
     } else {
         html += '<label>Medio</label><select id="fTipoCon">' +
-                '<option value="FO">Fibra óptica (FO)</option>' +
-                '<option value="Ethernet">Ethernet</option></select>';
+            '<option value="FO">Fibra óptica (FO)</option>' +
+            '<option value="Ethernet">Ethernet</option></select>';
         var velMax = '100 Gbps';
         if (a.tipo === 'switch' && a.velocidad_enlace) velMax = a.velocidad_enlace;
         if (b.tipo === 'switch' && b.velocidad_enlace && VEL_MBPS[b.velocidad_enlace] < VEL_MBPS[velMax]) {
             velMax = b.velocidad_enlace;
         }
         html += '<label>Velocidad</label><select id="fVelCon">' + opcionesVelFiltradas(velMax, '1 Gbps') + '</select>';
-        if (esEquipo(a.tipo)) html += '<label>Puerto en ' + nombreA + '</label><input type="number" id="fPuertoA" min="1">';
-        if (esEquipo(b.tipo)) html += '<label>Puerto en ' + nombreB + '</label><input type="number" id="fPuertoB" min="1">';
+        if (esEquipo(a.tipo)) html += '<label>Puerto en ' + esc(nombreA) + '</label><input type="number" id="fPuertoA" min="1">';
+        if (esEquipo(b.tipo)) html += '<label>Puerto en ' + esc(nombreB) + '</label><input type="number" id="fPuertoB" min="1">';
     }
 
     abrirModal('🔌 NUEVA CONEXIÓN', html);
 
     var botones = '<div style="display:flex;gap:10px;margin-top:20px;">' +
-                  '<button class="btn-add" id="btnConfirmarCon" style="flex:1;">Crear conexión</button>' +
-                  '<button class="btn-del" id="btnCancelarCon" style="flex:1;">Cancelar</button>' +
-                  '</div>';
+        '<button class="btn-add" id="btnConfirmarCon" style="flex:1;">Crear conexión</button>' +
+        '<button class="btn-del" id="btnCancelarCon" style="flex:1;">Cancelar</button>' +
+        '</div>';
     document.getElementById('modalCuerpo').innerHTML += botones;
 
     document.getElementById('btnCancelarCon').addEventListener('click', cerrarModal);
@@ -1063,25 +1437,25 @@ function mostrarModalEdicion(obj) {
     var html = '<p id="msgErrorEdit" style="color:red;font-size:12px;"></p>';
 
     html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin-bottom:10px;">— Datos generales —</h4>';
-    html += '<label>Descripción *</label><input type="text" id="eDescripcion" value="' + nombreActual + '">';
-    html += '<label>PR / Código</label><input type="text" id="ePR" value="' + (obj.pr || '') + '">';
+    html += '<label>Descripción *</label><input type="text" id="eDescripcion" value="' + esc(nombreActual) + '">';
+    html += '<label>PR / Código</label><input type="text" id="ePR" value="' + esc(obj.pr || '') + '">';
 
     if (esEquipo(obj.tipo)) {
-        html += '<label>Sello</label><input type="text" id="eSello" value="' + (obj.sello || '') + '">';
-        html += '<label>Marca *</label><input type="text" id="eMarca" value="' + (obj.marca || '') + '">';
-        html += '<label>Modelo *</label><input type="text" id="eModelo" value="' + (obj.modelo || '') + '">';
-        html += '<label>Fecha instalación</label><input type="text" readonly value="' + (obj.fecha_instalacion ? obj.fecha_instalacion.substring(0, 10) : '') + '">';
-        html += '<label>Ubicación</label><input type="text" readonly value="' + (obj.ubicacion || '') + '">';
+        html += '<label>Sello</label><input type="text" id="eSello" value="' + esc(obj.sello || '') + '">';
+        html += '<label>Marca *</label><input type="text" id="eMarca" value="' + esc(obj.marca || '') + '">';
+        html += '<label>Modelo *</label><input type="text" id="eModelo" value="' + esc(obj.modelo || '') + '">';
+        html += '<label>Fecha instalación</label><input type="text" readonly value="' + (obj.fecha_instalacion ? esc(obj.fecha_instalacion.substring(0, 10)) : '') + '">';
+        html += '<label>Ubicación</label><input type="text" readonly value="' + esc(obj.ubicacion || '') + '">';
     }
 
     if (obj.tipo === 'switch') {
         var usados = puertosUsadosReales(obj);
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin:15px 0 10px 0;">— Datos del switch —</h4>';
-        html += '<label>IP *</label><input type="text" id="eIP" value="' + (obj.ip || '') + '">';
+        html += '<label>IP *</label><input type="text" id="eIP" value="' + esc(obj.ip || '') + '">';
         html += '<label>Tipo de gestión</label><select id="eTipoGestion">' +
-                ['SSH', 'Telnet', 'Web', 'No gestionable'].map(function (g) {
-                    return '<option' + (obj.tipo_gestion === g ? ' selected' : '') + '>' + g + '</option>';
-                }).join('') + '</select>';
+            ['SSH', 'Telnet', 'Web', 'No gestionable'].map(function (g) {
+                return '<option' + (obj.tipo_gestion === g ? ' selected' : '') + '>' + g + '</option>';
+            }).join('') + '</select>';
         html += '<label>Velocidad de enlace</label><select id="eVelEnlace">' + opcionesVel(obj.velocidad_enlace) + '</select>';
         html += '<label>Puertos de fibra</label><input type="number" id="ePuertosFibra" value="' + (obj.puertos_fibra || 0) + '">';
         html += '<label>Puertos ethernet</label><input type="number" id="ePuertosEth" value="' + (obj.puertos_ethernet || 0) + '">';
@@ -1097,24 +1471,23 @@ function mostrarModalEdicion(obj) {
     }
 
     if (esPC(obj.tipo) || esServicio(obj.tipo)) {
-        html += '<label>IP *</label><input type="text" id="eIP" value="' + (obj.ip || '') + '">';
+        html += '<label>IP *</label><input type="text" id="eIP" value="' + esc(obj.ip || '') + '">';
     }
     if (esPC(obj.tipo)) {
-        html += '<label>Sistemas que atiende</label><textarea id="eSistemas" rows="3">' + (obj.sistemas_atiende || '') + '</textarea>';
+        html += '<label>Sistemas que atiende</label><textarea id="eSistemas" rows="3">' + esc(obj.sistemas_atiende || '') + '</textarea>';
     }
 
-    // 🔧 NUEVO: selector de prioridad en edición (equipos, servicios, PCs)
     if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
         html += '<label>Prioridad de alertas</label><select id="ePrioridad">' + opcionesPrioridad(obj.prioridad || 'baja') + '</select>';
     }
 
     html += '<div style="display:flex;gap:10px;margin-top:20px;">' +
-            '<button class="btn-add" id="btnActualizar" style="flex:1;">💾 Actualizar</button>' +
-            '<button class="btn-del" id="btnEliminarModal" style="flex:1;">🗑️ Eliminar</button>' +
-            '</div>';
+        '<button class="btn-add" id="btnActualizar" style="flex:1;">💾 Actualizar</button>' +
+        '<button class="btn-del" id="btnEliminarModal" style="flex:1;">🗑️ Eliminar</button>' +
+        '</div>';
     html += '<button class="btn-del" id="btnCerrarModal" style="margin-top:10px;background:#555;">Cerrar sin guardar</button>';
 
-    abrirModal('✏️ Editar: ' + nombreActual, html);
+    abrirModal('✏️ Editar: ' + esc(nombreActual), html);
 
     document.getElementById('btnCerrarModal').addEventListener('click', cerrarModal);
 
@@ -1186,7 +1559,10 @@ function mostrarModalEdicion(obj) {
                 cambios.puertos_ethernet = nEth;
             }
 
-            if (val('eTipoGestion') !== (obj.tipo_gestion || '')) cambios.tipo_gestion = val('eTipoGestion');
+            if (val('eTipoGestion') !== (obj.tipo_gestion || '')) {
+                cambios.tipo_gestion = val('eTipoGestion');
+                cambios.gestionable = (val('eTipoGestion') !== 'No gestionable');
+            }
 
             var nVel = val('eVelEnlace');
             if (nVel !== (obj.velocidad_enlace || '')) {
@@ -1210,7 +1586,6 @@ function mostrarModalEdicion(obj) {
             if (val('eSistemas') !== (obj.sistemas_atiende || '')) cambios.sistemas_atiende = val('eSistemas');
         }
 
-        // 🔧 NUEVO: capturar cambio de prioridad
         var ePrio = document.getElementById('ePrioridad');
         if (ePrio && val('ePrioridad') !== (obj.prioridad || 'baja')) {
             cambios.prioridad = val('ePrioridad');
@@ -1224,7 +1599,6 @@ function mostrarModalEdicion(obj) {
 
         for (var kk in cambios) obj[kk] = cambios[kk];
         if (cambios.descripcion) obj.nombre = cambios.descripcion;
-        if (cambios.tipo_gestion) obj.gestionable = (cambios.tipo_gestion !== 'No gestionable');
 
         cerrarModal();
         guardar();
@@ -1265,15 +1639,15 @@ function mostrarPanelConexion(con) {
     var b = buscarObjPorId(con.hasta);
     var hayPC = (a && esPC(a.tipo)) || (b && esPC(b.tipo));
 
-    var html = '<p><strong>Desde:</strong> ' + (a ? (a.descripcion || a.nombre) : '?') + '</p>';
-    html += '<p><strong>Hasta:</strong> ' + (b ? (b.descripcion || b.nombre) : '?') + '</p>';
+    var html = '<p><strong>Desde:</strong> ' + esc(a ? (a.descripcion || a.nombre) : '?') + '</p>';
+    html += '<p><strong>Hasta:</strong> ' + esc(b ? (b.descripcion || b.nombre) : '?') + '</p>';
 
     if (hayPC) {
         html += '<label>Medio</label><select id="cTipo" disabled><option value="Ethernet" selected>Ethernet (PC)</option></select>';
     } else {
         html += '<label>Medio</label><select id="cTipo">' +
-                '<option value="FO"' + (con.tipo === 'FO' ? ' selected' : '') + '>Fibra óptica (FO)</option>' +
-                '<option value="Ethernet"' + (con.tipo === 'Ethernet' ? ' selected' : '') + '>Ethernet</option></select>';
+            '<option value="FO"' + (con.tipo === 'FO' ? ' selected' : '') + '>Fibra óptica (FO)</option>' +
+            '<option value="Ethernet"' + (con.tipo === 'Ethernet' ? ' selected' : '') + '>Ethernet</option></select>';
     }
 
     var velMax = '100 Gbps';
@@ -1284,8 +1658,8 @@ function mostrarPanelConexion(con) {
     if (hayPC) velMax = (a && a.tipo === 'switch') ? (a.velocidad_enlace || '1 Gbps') : ((b && b.tipo === 'switch') ? (b.velocidad_enlace || '1 Gbps') : '100 Mbps');
     html += '<label>Velocidad</label><select id="cVel">' + opcionesVelFiltradas(velMax, con.velocidad) + '</select>';
 
-    if (a && esEquipo(a.tipo)) html += '<label>Puerto en ' + (a.descripcion || a.nombre) + '</label><input type="number" id="cPuertoA" value="' + (con.puertoDesde == null ? '' : con.puertoDesde) + '">';
-    if (b && esEquipo(b.tipo)) html += '<label>Puerto en ' + (b.descripcion || b.nombre) + '</label><input type="number" id="cPuertoB" value="' + (con.puertoHasta == null ? '' : con.puertoHasta) + '">';
+    if (a && esEquipo(a.tipo)) html += '<label>Puerto en ' + esc(a.descripcion || a.nombre) + '</label><input type="number" id="cPuertoA" value="' + (con.puertoDesde == null ? '' : con.puertoDesde) + '">';
+    if (b && esEquipo(b.tipo)) html += '<label>Puerto en ' + esc(b.descripcion || b.nombre) + '</label><input type="number" id="cPuertoB" value="' + (con.puertoHasta == null ? '' : con.puertoHasta) + '">';
 
     document.getElementById('panel-contenido').innerHTML = html +
         '<button class="btn-del" id="btnEliminarCon" style="margin-top:15px;">Eliminar conexión</button>';
@@ -1342,14 +1716,19 @@ function mostrarPanelConexion(con) {
             panelVacio();
         }
     });
+
+    if (!puedeEditar()) {
+        var soloCon = document.querySelectorAll('#panel-contenido input, #panel-contenido select, #panel-contenido button');
+        for (var s2 = 0; s2 < soloCon.length; s2++) soloCon[s2].disabled = true;
+    }
 }
 
 // ================= MIGAS / BARRA =================
 function actualizarMigas() {
     var cont = document.getElementById('migas');
-    var html = '<span class="miga" data-idx="-1">🗺️ ' + datos.nombre + '</span>';
+    var html = '<span class="miga" data-idx="-1">🗺️ ' + esc(datos.nombre) + '</span>';
     for (var i = 0; i < ruta.length; i++) {
-        html += '<span class="sep">›</span><span class="miga" data-idx="' + i + '">' + (ICONOS[ruta[i].tipo] || '') + ' ' + (ruta[i].descripcion || ruta[i].nombre) + '</span>';
+        html += '<span class="sep">›</span><span class="miga" data-idx="' + i + '">' + (ICONOS[ruta[i].tipo] || '') + ' ' + esc(ruta[i].descripcion || ruta[i].nombre) + '</span>';
     }
     cont.innerHTML = html;
 
@@ -1367,15 +1746,20 @@ function actualizarMigas() {
 
 function actualizarBarraAgregar() {
     var barra = document.getElementById('barra-agregar');
+    if (!puedeEditar()) {
+        barra.innerHTML = '<p style="color:#555;font-size:12px;padding:10px;">👁️ Modo lectura: tu rol solo puede consultar.</p>';
+        return;
+    }
+
     var html = '';
     if (ruta.length === 0) html = '<button class="btn-add" data-crear="unidad">+ Unidad</button>';
     if (ruta.length === 1) html = '<button class="btn-add" data-crear="edificio">+ Edificio</button>';
     if (ruta.length === 2) html = '<button class="btn-add" data-crear="local">+ Local</button>';
     if (ruta.length >= 3) {
         html = '<button class="btn-add" data-crear="local">+ Sub-local</button>' +
-               '<button class="btn-add" data-crear="equipo">+ Equipo de red</button>' +
-               '<button class="btn-add" data-crear="servicio">+ Servicio</button>' +
-               '<button class="btn-add" data-crear="pc">+ PC</button>';
+            '<button class="btn-add" data-crear="equipo">+ Equipo de red</button>' +
+            '<button class="btn-add" data-crear="servicio">+ Servicio</button>' +
+            '<button class="btn-add" data-crear="pc">+ PC</button>';
     }
     barra.innerHTML = html;
 
@@ -1426,7 +1810,7 @@ document.addEventListener('mouseup', function () {
         arrastre = null;
         if (a.moved) {
             guardar();
-        } else if (esEquipo(a.obj.tipo) || esServicio(a.obj.tipo) || esPC(a.obj.tipo)) {
+        } else if (puedeEditar() && (esEquipo(a.obj.tipo) || esServicio(a.obj.tipo) || esPC(a.obj.tipo))) {
             mostrarModalEdicion(a.obj);
         }
     }
@@ -1446,31 +1830,60 @@ function panelVacio() {
 }
 
 function mostrarPanel(obj) {
-    var html = '<h3>' + (ICONOS[obj.tipo] || '') + ' ' + obj.tipo.toUpperCase() + '</h3>';
+    var html = '<h3>' + (ICONOS[obj.tipo] || '') + ' ' + esc(obj.tipo.toUpperCase()) + '</h3>';
 
     if (esContenedor(obj.tipo)) {
         html += campo('Nombre', 'nombre', obj.nombre || obj.descripcion);
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Doble clic en el elemento para ver su contenido.</p>';
-        html += '<button class="btn-del" id="btnEliminar">Eliminar</button>';
+        if (puedeEditar()) {
+            html += '<button class="btn-del" id="btnEliminar">Eliminar</button>';
+        }
     }
     else if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
-        html += '<p style="margin-top:8px;"><strong>' + (obj.descripcion || obj.nombre) + '</strong></p>';
-        if (obj.ip) html += '<p>IP: ' + obj.ip + '</p>';
-        if (obj.pr) html += '<p>PR: ' + obj.pr + '</p>';
+        html += '<p style="margin-top:8px;"><strong>' + esc(obj.descripcion || obj.nombre) + '</strong></p>';
+        if (obj.ip) html += '<p>IP: ' + esc(obj.ip) + '</p>';
+        if (obj.pr) html += '<p>PR: ' + esc(obj.pr) + '</p>';
         if (obj.tipo === 'switch') {
             html += '<p>Puertos fibra: ' + (obj.puertos_fibra_en_uso || 0) + '/' + (obj.puertos_fibra || 0) +
-                    ' — ethernet: ' + (obj.puertos_ethernet_en_uso || 0) + '/' + (obj.puertos_ethernet || 0) + '</p>';
+                ' — ethernet: ' + (obj.puertos_ethernet_en_uso || 0) + '/' + (obj.puertos_ethernet || 0) + '</p>';
+
+            // 🔧 Botones de acceso remoto: aparecen si hay IP + tipo de gestión definido
+            var tieneGestion = obj.ip && obj.tipo_gestion && obj.tipo_gestion !== 'No gestionable';
+            if (tieneGestion) {
+                var nombreSwitch = obj.descripcion || obj.nombre || '';
+                html += '<div style="display:flex;gap:8px;margin-top:10px;">';
+                if (obj.tipo_gestion === 'SSH') {
+                    html += '<button class="btn-add" id="btnAbrirSSH" style="flex:1;background:#2c3e50;">🔐 Abrir SSH</button>';
+                } else if (obj.tipo_gestion === 'Web') {
+                    html += '<button class="btn-add" id="btnAbrirWeb" style="flex:1;background:#27ae60;">🌐 Abrir Admin Web</button>';
+                } else if (obj.tipo_gestion === 'Telnet') {
+                    html += '<button class="btn-add" id="btnAbrirTelnet" style="flex:1;background:#8e44ad;">📟 Abrir Telnet</button>';
+                }
+                html += '</div>';
+            }
         }
-        // 🔧 NUEVO: mostrar prioridad actual
-        html += '<p style="margin-top:6px;"><strong>Prioridad de alertas:</strong> ' + (obj.prioridad || 'baja') + '</p>';
+        html += '<p style="margin-top:6px;"><strong>Prioridad de alertas:</strong> ' + esc(obj.prioridad || 'baja') + '</p>';
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Haz clic sobre el elemento (sin arrastrar) para editar sus datos.</p>';
-        html += '<button class="btn-add" id="btnEditarModal">✏️ Editar datos</button>';
+        if (puedeEditar()) {
+            html += '<button class="btn-add" id="btnEditarModal">✏️ Editar datos</button>';
+        }
     }
 
     document.getElementById('panel-contenido').innerHTML = html;
 
     var btnEdit = document.getElementById('btnEditarModal');
     if (btnEdit) btnEdit.addEventListener('click', function () { mostrarModalEdicion(obj); });
+
+    var nombreSwitch = obj.descripcion || obj.nombre || '';
+
+    var btnSSH = document.getElementById('btnAbrirSSH');
+    if (btnSSH) btnSSH.addEventListener('click', function () { abrirAccesoRemoto('ssh', obj.ip, nombreSwitch); });
+
+    var btnWeb = document.getElementById('btnAbrirWeb');
+    if (btnWeb) btnWeb.addEventListener('click', function () { abrirAccesoRemoto('web', obj.ip, nombreSwitch); });
+
+    var btnTelnet = document.getElementById('btnAbrirTelnet');
+    if (btnTelnet) btnTelnet.addEventListener('click', function () { abrirAccesoRemoto('telnet', obj.ip, nombreSwitch); });
 
     var campoNombre = document.querySelector('#panel-contenido [data-campo="nombre"]');
     if (campoNombre) {
@@ -1509,6 +1922,11 @@ function mostrarPanel(obj) {
             }
         });
     }
+
+    if (!puedeEditar()) {
+        var solo = document.querySelectorAll('#panel-contenido input, #panel-contenido select, #panel-contenido textarea, #panel-contenido button');
+        for (var s = 0; s < solo.length; s++) solo[s].disabled = true;
+    }
 }
 
 function pushEnPadre(padre, obj) {
@@ -1524,9 +1942,9 @@ function pushEnPadre(padre, obj) {
         }
         return;
     }
-    if (esEquipo(obj.tipo))   { padre.equipos = padre.equipos || []; padre.equipos.push(obj); return; }
+    if (esEquipo(obj.tipo)) { padre.equipos = padre.equipos || []; padre.equipos.push(obj); return; }
     if (esServicio(obj.tipo)) { padre.servicios = padre.servicios || []; padre.servicios.push(obj); return; }
-    if (esPC(obj.tipo))       { padre.pcs = padre.pcs || []; padre.pcs.push(obj); return; }
+    if (esPC(obj.tipo)) { padre.pcs = padre.pcs || []; padre.pcs.push(obj); return; }
 }
 
 function eliminarPorId(id) {
@@ -1541,14 +1959,6 @@ function eliminarPorId(id) {
     }
 
     function eliminarRecursivo(obj, id) {
-        if (obj.id === id) return true;
-
-        var hijos = hijosDe(obj);
-        for (var i = 0; i < hijos.length; i++) {
-            if (eliminarRecursivo(hijos[i], id)) return true;
-        }
-
-        if (obj.unidades && eliminarEnArray(obj.unidades, id)) return true;
         if (obj.edificios && eliminarEnArray(obj.edificios, id)) return true;
         if (obj.locales && eliminarEnArray(obj.locales, id)) return true;
         if (obj.sublocales && eliminarEnArray(obj.sublocales, id)) return true;
@@ -1556,50 +1966,17 @@ function eliminarPorId(id) {
         if (obj.servicios && eliminarEnArray(obj.servicios, id)) return true;
         if (obj.pcs && eliminarEnArray(obj.pcs, id)) return true;
 
+        var hijos = hijosDe(obj);
+        for (var i = 0; i < hijos.length; i++) {
+            if (esContenedor(hijos[i].tipo) && eliminarRecursivo(hijos[i], id)) return true;
+        }
         return false;
     }
 
+    if (eliminarEnArray(datos.unidades, id)) return;
+
     for (var u = 0; u < datos.unidades.length; u++) {
         if (eliminarRecursivo(datos.unidades[u], id)) return;
-    }
-
-    for (var i = 0; i < datos.unidades.length; i++) {
-        if (datos.unidades[i].id === id) {
-            datos.unidades.splice(i, 1);
-            return;
-        }
-    }
-}
-// ================= ESTADO DEL MONITOR =================
-var estadosRemotos = {};
-
-function estadoDe(id) {
-    var e = estadosRemotos[id];
-    return e ? e.estado : null;
-}
-
-function cargarEstados() {
-    fetch('/api/estados', { credentials: 'same-origin' })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            estadosRemotos = data || {};
-            actualizarIndicadores();
-            dibujarConexiones();
-        })
-        .catch(function () { /* el backend aún no tiene el monitor activo */ });
-}
-
-function actualizarIndicadores() {
-    var lista = listaActual();
-    for (var i = 0; i < lista.length; i++) {
-        var obj = lista[i];
-        var el = document.querySelector('.elemento[data-id="' + obj.id + '"]');
-        if (!el) continue;
-        var dot = el.querySelector('.estado-indicador');
-        if (!dot) continue;
-        var st = estadoDe(obj.id) || 'desconocido';
-        dot.className = 'estado-indicador estado-' + st;
-        dot.title = 'Estado: ' + st;
     }
 }
 
@@ -1608,6 +1985,19 @@ function iniciar() {
     if (!cargar()) return;
     renderizar();
     iniciarAnimacionConexiones();
+    cargarEstados();
+    setInterval(cargarEstados, 30000);
+
+    fetch('/api/sesion', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (s) {
+            rolUsuario = s.rol || 'operador';
+            aplicarPermisos();
+        })
+        .catch(function () {
+            rolUsuario = 'operador';
+            aplicarPermisos();
+        });
 
     document.getElementById('btnVolver').addEventListener('click', function () {
         window.location.href = '/private/mapa.html';
