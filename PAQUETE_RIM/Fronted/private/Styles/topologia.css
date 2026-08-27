@@ -1,0 +1,329 @@
+/* ================= RESET Y BASE ================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+body {
+    height: 100vh;
+    width: 100vw;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ================= HEADER ================= */
+header {
+    background: green;
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+}
+
+header h1 {
+    flex: 1;
+    text-align: center;
+    color: whitesmoke;
+    font-size: 18px;
+}
+
+#indicadorGuardado,
+#contadorEquipos {
+    color: #ffff00;
+    font-size: 12px;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+#estadoConexion {
+    color: #ffcc00;
+    font-size: 12px;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.BtnHeader {
+    padding: 6px 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    background: rgb(3, 121, 29);
+    color: #fff;
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+.BtnHeader.conectar { background: #0f7173; }
+.BtnHeader.salir { background: #b00000; }
+.BtnHeader:hover { background: #fff; color: #000; }
+.BtnHeader.activo { background: #ffcc00; color: #000; }
+
+/* ================= MIGAS DE PAN ================= */
+#migas {
+    background: rgb(16, 33, 48);
+    color: #fff;
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+#migas .miga {
+    cursor: pointer;
+    color: #7fd4ff;
+    font-weight: bold;
+}
+
+#migas .miga:hover { text-decoration: underline; }
+#migas .sep { color: #888; margin: 0 5px; }
+
+/* ================= LAYOUT PRINCIPAL ================= */
+main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* ================= LIENZO ================= */
+#lienzo {
+    flex: 1;
+    position: relative;
+    margin: 8px;
+    border: 2px solid black;
+    border-radius: 12px;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(rgb(23, 134, 134), rgb(43, 210, 216));
+    background-size: 20px 20px, 20px 20px, 100% 100%;
+    overflow: auto;
+}
+
+#capa-conexiones {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.linea-conexion, .linea-hit { cursor: pointer; }
+
+/* ================= ELEMENTOS DEL MAPA ================= */
+.elemento {
+    position: absolute;
+    border: 2px solid;
+    border-radius: 6px;
+    cursor: move;
+    user-select: none;
+    -moz-user-select: none;
+    padding: 2px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 2;
+}
+
+.elemento .etiqueta {
+    display: block;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 2px #000;
+    padding-top: 4px;
+    pointer-events: none;
+}
+
+.elemento .ip {
+    display: block;
+    font-size: 9px;
+    color: #eef;
+    text-shadow: 1px 1px 2px #000;
+    pointer-events: none;
+}
+
+/* Colores por tipo de equipo */
+.unidad { border-color: #4a90d9; background: rgba(74, 144, 217, 0.55); }
+.edificio { border-color: #e94560; background: rgba(233, 69, 96, 0.50); }
+.local { border-color: #f38181; background: rgba(243, 129, 129, 0.50); }
+
+.switch, .modem, .transceiver { border-radius: 50%; }
+.switch { border-color: #c9b6ff; background: rgba(110, 80, 210, 0.60); }
+.modem { border-color: #fcbad3; background: rgba(230, 110, 170, 0.60); }
+.transceiver { border-color: #a8d8ea; background: rgba(60, 150, 190, 0.60); }
+
+.bd, .dns, .firewall, .servidor {
+    border-color: #ffe08a;
+    background: rgba(212, 160, 20, 0.55);
+}
+
+.pc {
+    border-color: #9ad1ff;
+    background: rgba(20, 110, 190, 0.75);
+    border-radius: 6px;
+}
+
+/* Estados visuales */
+.seleccionado { box-shadow: 0 0 0 4px #4ecca3; }
+.origen-conexion { box-shadow: 0 0 0 4px #ffcc00 !important; }
+
+.handle {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    background: #4ecca3;
+    border-radius: 50%;
+    cursor: se-resize;
+    z-index: 5;
+}
+
+/* Indicador de estado del monitor (punto de color) */
+.estado-indicador {
+    position: absolute;
+    top: -7px;
+    left: -7px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    z-index: 6;
+    pointer-events: none;
+}
+.estado-online { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.estado-offline { background: #e74c3c; box-shadow: 0 0 6px #e74c3c; }
+.estado-degradado { background: #f39c12; box-shadow: 0 0 6px #f39c12; }
+.estado-desconocido { background: #95a5a6; }
+
+/* ================= PANEL LATERAL ================= */
+#panel {
+    width: 280px;
+    background: #fff;
+    border-left: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+}
+
+.h2 {
+    padding: 4px;
+    color: #fff;
+    text-align: center;
+    background: rgb(16, 33, 48);
+    border-bottom: 2px solid black;
+}
+
+#panel-contenido {
+    padding: 12px;
+    color: #000;
+    font-size: 14px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+#panel-contenido .aviso { color: #555; text-align: center; }
+#panel-contenido h3 { margin-bottom: 8px; color: rgb(16, 33, 48); border-bottom: 1px solid #999; }
+#panel-contenido label { display: block; margin-top: 8px; font-weight: bold; }
+#panel-contenido input[type="text"], #panel-contenido select {
+    width: 100%;
+    padding: 5px;
+    margin-top: 3px;
+    border: 1px solid #999;
+    border-radius: 4px;
+}
+
+/* Botones del panel */
+.btn-add, .btn-del {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #fff;
+}
+.btn-add { background: rgb(3, 121, 29); }
+.btn-add:hover { background: green; }
+.btn-del { background: #b00000; }
+.btn-del:hover { background: red; }
+
+#barra-agregar {
+    padding: 12px;
+    border-top: 2px solid #000;
+}
+
+/* ================= MODAL (Formularios) ================= */
+#modal label { display: block; margin-top: 10px; font-weight: bold; font-size: 13px; color: #16213e; }
+#modal input[type="text"], #modal input[type="number"], #modal input[type="password"], #modal select, #modal textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 3px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+#modal input[readonly] { background: #f0f0f0; color: #666; }
+#modal input:focus, #modal select:focus, #modal textarea:focus {
+    border-color: #0f3460;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(15, 52, 96, 0.2);
+}
+#modal h4 { font-size: 14px; color: #16213e; margin-top: 15px; }
+
+/* ================= TERMINAL SSH (Modal Pantalla Completa) ================= */
+.modal-terminal {
+    width: 100%;
+    height: 100%;
+    background: #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-terminal .barra-superior {
+    background: #2c3e50;
+    color: #ecf0f1;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.modal-terminal .barra-superior .titulo { font-weight: bold; margin-right: 15px; }
+.modal-terminal .barra-superior .hint-ssh { color: #95a5a6; font-size: 11px; flex: 1; }
+
+.modal-terminal .barra-superior button {
+    background: #c0392b;
+    color: white;
+    border: none;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.modal-terminal #xterm-container {
+    flex: 1;
+    padding: 6px;
+}
+
+/* Login SSH (Si se usa dentro del modal) */
+.login-ssh {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    max-width: 400px;
+    margin: 20px auto;
+}
+.login-ssh label { display: block; margin-top: 10px; font-weight: bold; color: #333; }
+.login-ssh input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-top: 4px;
+    box-sizing: border-box;
+}

@@ -32,7 +32,7 @@
     <button class="tab" data-tab="usuarios" id="tabUsuariosBtn" style="display:none;">👥 Usuarios</button>
     <button class="tab" data-tab="auditoria">🔐 Auditoría SSH</button>
     <button class="tab" data-tab="configs">💾 Configs</button>
-    <button class="tab" data-tab="backups">🗄️ Backups BD</button>
+      <button class="tab" data-tab="backups">🗄️ Backups BD</button>
   </div>
 
   <main>
@@ -113,13 +113,13 @@
     <section id="tab-configs" style="display:none">
       <div id="tablaConfigs"></div>
     </section>
-    <section id="tab-backups" style="display:none">
-      <div class="toolbar">
-        <h3>🗄️ Respaldos de PostgreSQL (automático diario 02:00 · retención 7 días)</h3>
-        <button class="btn b-verde" id="btnBackupAhora">💾 Respaldar ahora</button>
-      </div>
-      <div id="tablaBackups"></div>
-    </section>
+      <section id="tab-backups" style="display:none">
+    <div class="toolbar">
+      <h3>🗄️ Respaldos de PostgreSQL (automático diario 02:00 · retención 7 días)</h3>
+      <button class="btn b-verde" id="btnBackupAhora">💾 Respaldar ahora</button>
+    </div>
+    <div id="tablaBackups"></div>
+  </section>
   </main>
 
   <div id="modal">

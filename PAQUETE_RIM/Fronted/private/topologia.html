@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <script src="/private/libs/socket.io.slim.js"></script>
+    <link rel="stylesheet" href="/private/libs/xterm.css">
+    <script src="/private/libs/xterm.js"></script>
+    <script src="/private/libs/xterm-addon-fit.js"></script>
+    <meta charset="UTF-8" />
+    <title>Mapa Conexion</title>
+    <link rel="stylesheet" href="/private/Styles/topologia.css" />
+</head>
+
+<body>
+    <header>
+        <button id="btnVolver" class="BtnHeader">← Mapa</button>
+        <h1 id="tituloMunicipio">Topología</h1>
+        <span id="contadorEquipos"></span>
+        <button id="btnConectar" class="BtnHeader conectar">🔌 Conectar</button>
+
+        <span id="estadoConexion"></span>
+        <span id="indicadorGuardado"></span>
+        <button id="btnSalir" class="BtnHeader salir">Salir</button>
+    </header>
+
+    <div id="migas"></div>
+
+    <main>
+        <section id="lienzo"></section>
+
+        <aside id="panel">
+            <h2 class="h2">PROPIEDADES</h2>
+            <div id="panel-contenido">
+                <p class="aviso">Seleccione un elemento del lienzo</p>
+            </div>
+            <div id="barra-agregar"></div>
+        </aside>
+    </main>
+    <!-- Modal para formularios -->
+    <div id="modal"
+        style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
+        <div
+            style="background:#fff;border-radius:10px;width:500px;max-width:90%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <div
+                style="background:rgb(16,33,48);color:#fff;padding:12px 15px;display:flex;justify-content:space-between;align-items:center;border-radius:10px 10px 0 0;">
+                <h3 id="modalTitulo" style="margin:0;font-size:16px;"></h3>
+                <button onclick="cerrarModal()"
+                    style="background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0 5px;">×</button>
+            </div>
+            <div id="modalCuerpo" style="padding:20px;overflow-y:auto;flex:1;"></div>
+        </div>
+    </div>
+
+    <script src="/private/Javascripts/topologia.js"></script>
+</body>
+
+</html>
