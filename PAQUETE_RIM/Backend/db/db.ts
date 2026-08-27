@@ -133,7 +133,7 @@ export async function registrarAviso(recurso: any, canal: string, destinatario: 
     await pool.query(
         `INSERT INTO avisos_enviados (recurso_id, recurso_nombre, canal, destinatario, detalle, prioridad)
          VALUES ($1,$2,$3,$4,$5,$6)`,
-        [recurso.id, recurso.nombre, canal, destinatario, detalle, prio]).catch(() => {});
+        [recurso.id, recurso.nombre, canal, destinatario, detalle, prio]).catch(() => { });
 }
 
 export async function getAvisos() {
@@ -150,7 +150,7 @@ export async function registrarSSHInicio(usuarioSistema: string, usuarioSsh: str
 }
 
 export async function registrarSSHFin(idAudit: number) {
-    await pool.query('UPDATE auditoria_ssh SET fin = CURRENT_TIMESTAMP WHERE id=$1', [idAudit]).catch(() => {});
+    await pool.query('UPDATE auditoria_ssh SET fin = CURRENT_TIMESTAMP WHERE id=$1', [idAudit]).catch(() => { });
 }
 
 export async function getAuditoria() {
@@ -268,9 +268,9 @@ export async function leerTopologiaCompleta(municipioId: string) {
             ...pcs.map((p: any) => p.id)
         ];
         const conexiones = idsEntidades.length ? (await cliente.query(
-    'SELECT * FROM conexiones WHERE desde_id = ANY($1) OR hasta_id = ANY($1)',
-    [idsEntidades]
-)).rows : [];
+            'SELECT * FROM conexiones WHERE desde_id = ANY($1) OR hasta_id = ANY($1)',
+            [idsEntidades]
+        )).rows : [];
 
         const resultado: any = {
             nombre: mun.nombre,
@@ -355,13 +355,13 @@ export async function guardarTopologiaCompleta(municipioId: string, municipioNom
                 `INSERT INTO unidades (id, municipio_id, nombre, descripcion, x, y, width, height)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
                 [unidad.id, municipioId, unidad.nombre || unidad.descripcion, unidad.descripcion, unidad.x, unidad.y, unidad.width, unidad.height]);
-            
+
             for (const edificio of (unidad.edificios || [])) {
                 await cliente.query(
                     `INSERT INTO edificios (id, unidad_id, nombre, descripcion, x, y, width, height)
                      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
                     [edificio.id, unidad.id, edificio.nombre || edificio.descripcion, edificio.descripcion, edificio.x, edificio.y, edificio.width, edificio.height]);
-                
+
                 for (const local of (edificio.locales || [])) {
                     await insertarLocalRecursivo(cliente, local, edificio.id, null);
                 }
@@ -399,10 +399,10 @@ async function insertarLocalRecursivo(cliente: any, local: any, edificioId: stri
                 puerto_ethernet, puerto_ethernet_en_uso, usa_adsl, prioridad, x, y, width, height)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
             [eq.id, local.id, eq.tipo, eq.descripcion || eq.nombre, eq.pr, eq.sello, eq.marca, eq.modelo,
-             eq.fecha_instalacion, eq.ubicacion, eq.ip, eq.tipo_gestion, eq.gestionable, eq.velocidad_enlace,
-             eq.puertos_fibra, eq.puertos_fibra_en_uso, eq.puertos_ethernet, eq.puertos_ethernet_en_uso,
-             eq.puerto_ethernet, eq.puerto_ethernet_en_uso, eq.usa_adsl, eq.prioridad || 'baja',
-             eq.x, eq.y, eq.width, eq.height]);
+            eq.fecha_instalacion, eq.ubicacion, eq.ip, eq.tipo_gestion, eq.gestionable, eq.velocidad_enlace,
+            eq.puertos_fibra, eq.puertos_fibra_en_uso, eq.puertos_ethernet, eq.puertos_ethernet_en_uso,
+            eq.puerto_ethernet, eq.puerto_ethernet_en_uso, eq.usa_adsl, eq.prioridad || 'baja',
+            eq.x, eq.y, eq.width, eq.height]);
     }
 
     for (const s of (local.servicios || [])) {
