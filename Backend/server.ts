@@ -5,10 +5,11 @@ import session from 'express-session';
 import http from 'http';
 
 // Monitor
-import { setTopologia, getEstados, iniciarMonitor, extraerRecursos } from './healthTests/monitor';
+import { setTopologia, setTopologiaMunicipio, getEstados, iniciarMonitor, extraerRecursos } from './healthTests/monitor';
 import { montarProxySSH } from './sshProxy';
-import { iniciarBackups } from './backupConfigs'; // 🔧 corregido: sin .ts y con "s"
+import { iniciarBackups } from './backupConfigs';
 import { iniciarBackupsBD, ejecutarBackupBD, listarBackupsBD, rutaBackup } from './backupBD';
+import { iniciarOracleAsm, cicloAsm, getEstadoAsm } from './oracleAsm';
 // BD
 import {
     initDB,
@@ -67,6 +68,62 @@ function requiereRol(...rolesPermitidos: string[]) {
     };
 }
 
+// ---------- Auxiliares para gestión de equipos desde el panel ----------
+function buscarObjEnTopo(topo: any, id: string): any {
+    let encontrado: any = null;
+    const recorrer = (obj: any) => {
+        if (encontrado) return;
+        if (obj.id === id) { encontrado = obj; return; }
+        const hijos = [
+            ...(obj.edificios || []), ...(obj.locales || []), ...(obj.sublocales || []),
+            ...(obj.equipos || []), ...(obj.servicios || []), ...(obj.pcs || []), ...(obj.unidades || [])
+        ];
+        for (const h of hijos) recorrer(h);
+    };
+    for (const u of (topo.unidades || [])) recorrer(u);
+    return encontrado;
+}
+
+function eliminarEquipoDeTopo(topo: any, id: string): boolean {
+    const quitarDe = (cont: any): boolean => {
+        if (cont.equipos) {
+            const idx = cont.equipos.findIndex((e: any) => e.id === id);
+            if (idx >= 0) { cont.equipos.splice(idx, 1); return true; }
+        }
+        const hijos = [...(cont.edificios || []), ...(cont.locales || []), ...(cont.sublocales || [])];
+        for (const h of hijos) if (quitarDe(h)) return true;
+        return false;
+    };
+    for (const u of (topo.unidades || [])) if (quitarDe(u)) return true;
+    return false;
+}
+
+function decrementarPuerto(obj: any, medio: string) {
+    if (!obj) return;
+    if (obj.tipo === 'switch') {
+        if (medio === 'FO') obj.puertos_fibra_en_uso = Math.max(0, (obj.puertos_fibra_en_uso || 0) - 1);
+        else obj.puertos_ethernet_en_uso = Math.max(0, (obj.puertos_ethernet_en_uso || 0) - 1);
+    } else if (obj.tipo === 'modem') {
+        obj.puerto_ethernet_en_uso = Math.max(0, (obj.puerto_ethernet_en_uso || 0) - 1);
+    }
+}
+
+// 🔧 NUEVO: Carga TODA la topología desde la BD al arrancar
+async function cargarTopologiaInicial() {
+    try {
+        const municipios = await listarMunicipios();
+        const completo: any = { municipios: {} };
+        for (const m of municipios) {
+            const topo = await leerTopologiaCompleta(m.id);
+            if (topo) completo.municipios[m.id] = topo;
+        }
+        setTopologia(completo);
+        console.log(`[MONITOR] Topología cargada desde BD: ${municipios.length} municipio(s)`);
+    } catch (e: any) {
+        console.error('[MONITOR] No se pudo cargar topología inicial desde BD:', e.message);
+    }
+}
+
 // ============================================================================
 // 📡 API: Sesión
 // ============================================================================
@@ -99,7 +156,6 @@ app.post('/api/login', async (req, res) => {
         const u = await autenticarUsuario(usuarioLimpio, contrasenaLimpia);
         if (u) {
             delete intentosLogin[ip];
-            // 🔧 Cast a any para evitar error de tipado con el campo id
             (req.session as any).usuario = { nombre: u.usuario, rol: u.rol, id: u.id };
             return res.json({ exito: true, mensaje: `Bienvenido ${u.nombre || u.usuario}`, rol: u.rol });
         }
@@ -157,6 +213,14 @@ app.get('/private/topologia.html', requiereLogin, (req, res) => {
 // ============================================================================
 // 🛠️ API: Panel administrativo
 // ============================================================================
+// 🗄️ Estado de diskgroups ASM
+app.get('/api/admin/oracle-asm', requiereRol('admin', 'superadmin'), (req, res) => {
+    res.json(getEstadoAsm());
+});
+app.post('/api/admin/oracle-asm/refrescar', requiereRol('admin', 'superadmin'), async (req, res) => {
+    await cicloAsm();
+    res.json(getEstadoAsm());
+});
 app.get('/api/admin/usuarios', requiereRol('admin', 'superadmin'), async (req, res) => {
     res.json(await getUsuarios());
 });
@@ -182,6 +246,103 @@ app.get('/api/admin/equipos', requiereRol('admin', 'superadmin'), (req, res) => 
         estado: estados[r.id] ? (estados[r.id] as any).estado : 'desconocido'
     }));
     res.json(lista);
+});
+
+// 🏷️ Inventario físico para exportación (solo datos de placa, sin IP/estado)
+app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), async (req, res) => {
+    try {
+        const municipios = await listarMunicipios();
+        const inventario: any[] = [];
+
+        for (const mun of municipios) {
+            const topo = await leerTopologiaCompleta(mun.id);
+            if (!topo) continue;
+
+            const recorrer = (obj: any) => {
+                if (obj.tipo === 'switch' || obj.tipo === 'modem' || obj.tipo === 'transceiver') {
+                    inventario.push({
+                        id: obj.id,
+                        tipo: obj.tipo,
+                        descripcion: obj.descripcion || obj.nombre || '',
+                        pr: obj.pr || '',
+                        sello: obj.sello || '',
+                        marca: obj.marca || '',
+                        modelo: obj.modelo || '',
+                        fecha_instalacion: obj.fecha_instalacion || '',
+                        ubicacion: obj.ubicacion || '',
+                        municipio: mun.nombre
+                    });
+                }
+                const hijos = [
+                    ...(obj.edificios || []),
+                    ...(obj.locales || []),
+                    ...(obj.sublocales || []),
+                    ...(obj.equipos || []),
+                    ...(obj.unidades || [])
+                ];
+                for (const h of hijos) recorrer(h);
+            };
+
+            for (const u of (topo.unidades || [])) recorrer(u);
+        }
+        res.json(inventario);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ✏️ Editar datos de placa de un equipo desde el panel
+app.put('/api/admin/equipos/:id', requiereRol('admin', 'superadmin'), async (req, res) => {
+    try {
+        const munId = req.body.municipioId;
+        if (!munId) return res.status(400).json({ error: 'Falta municipioId' });
+        const topo = await leerTopologiaCompleta(munId);
+        if (!topo) return res.status(404).json({ error: 'Municipio no encontrado' });
+        const eq = buscarObjEnTopo(topo, req.params.id);
+        if (!eq || !(eq.tipo === 'switch' || eq.tipo === 'modem' || eq.tipo === 'transceiver'))
+            return res.status(404).json({ error: 'Equipo no encontrado' });
+
+        const c = req.body;
+        if (c.descripcion !== undefined) { eq.descripcion = c.descripcion; eq.nombre = c.descripcion; }
+        if (c.pr !== undefined) eq.pr = c.pr;
+        if (c.sello !== undefined) eq.sello = c.sello;
+        if (c.marca !== undefined) eq.marca = c.marca;
+        if (c.modelo !== undefined) eq.modelo = c.modelo;
+        if (c.prioridad !== undefined) eq.prioridad = c.prioridad;
+        if (c.ubicacion !== undefined) eq.ubicacion = c.ubicacion;
+
+        await guardarTopologiaCompleta(munId, topo.nombre, topo);
+        setTopologiaMunicipio(munId, topo);   // 🔧 merge, no pisa los demás
+        res.json({ exito: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// 🗑️ Eliminar un equipo desde el panel (limpia conexiones y libera puertos)
+app.delete('/api/admin/equipos/:id', requiereRol('superadmin'), async (req, res) => {
+    try {
+        const munId = String(req.query.mun || '');
+        if (!munId) return res.status(400).json({ error: 'Falta municipioId' });
+        const topo = await leerTopologiaCompleta(munId);
+        if (!topo) return res.status(404).json({ error: 'Municipio no encontrado' });
+
+        const id = req.params.id;
+        const restantes: any[] = [];
+        for (const con of (topo.conexiones || [])) {
+            if (con.desde === id || con.hasta === id) {
+                const otroId = con.desde === id ? con.hasta : con.desde;
+                decrementarPuerto(buscarObjEnTopo(topo, otroId), con.tipo);
+                continue;
+            }
+            restantes.push(con);
+        }
+        topo.conexiones = restantes;
+
+        if (!eliminarEquipoDeTopo(topo, id)) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+        await guardarTopologiaCompleta(munId, topo.nombre, topo);
+        setTopologiaMunicipio(munId, topo);   // 🔧 merge, no pisa los demás
+        res.json({ exito: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/admin/estadisticas', requiereRol('admin', 'superadmin'), (req, res) => {
@@ -237,6 +398,7 @@ app.post('/api/admin/probar-correo', requiereRol('admin', 'superadmin'), async (
 app.get('/api/admin/auditoria', requiereRol('admin', 'superadmin'), async (req, res) => {
     res.json(await getAuditoria());
 });
+
 // 🗄️ Backups de la base de datos (solo superadmin)
 app.post('/api/admin/backup-bd', requiereRol('superadmin'), async (req, res) => {
     try { res.json(await ejecutarBackupBD()); }
@@ -252,6 +414,7 @@ app.get('/api/admin/backups-bd/:archivo', requiereRol('superadmin'), (req, res) 
     if (!p) return res.status(404).json({ error: 'Backup no encontrado' });
     res.download(p);
 });
+
 app.get('/api/admin/configs/:id/descargar', requiereRol('admin', 'superadmin'), async (req, res) => {
     try {
         const c = await getConfig(parseInt(req.params.id, 10));
@@ -263,6 +426,7 @@ app.get('/api/admin/configs/:id/descargar', requiereRol('admin', 'superadmin'), 
         res.send(c.configuracion);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
 // 💾 Configs de switches
 app.get('/api/admin/configs', requiereRol('admin', 'superadmin'), async (req, res) => {
     res.json(await listarConfigs());
@@ -288,7 +452,7 @@ app.get('/api/topologia/db/:id', requiereLogin, async (req, res) => {
 app.put('/api/topologia/db/:id', requiereLogin, async (req, res) => {
     try {
         await guardarTopologiaCompleta(req.params.id, req.body.nombre || 'Sin nombre', req.body);
-        setTopologia({ municipios: { [req.params.id]: req.body } });
+        setTopologiaMunicipio(req.params.id, req.body);   // 🔧 merge, no pisa los demás
         res.json({ exito: true });
     } catch (e: any) {
         console.error('Error guardando topología:', e);
@@ -303,10 +467,12 @@ app.use('/private', requiereLogin, express.static(path.join(__dirname, '../Front
 // ============================================================================
 initDB()
     .then(() => migrarUsuariosIniciales())
+    .then(() => cargarTopologiaInicial())     // 🔧 NUEVO: carga todo desde BD antes del monitor
     .then(() => {
+        iniciarOracleAsm();   // 🔧 nuevo
         iniciarMonitor();
         iniciarBackups();
-        iniciarBackupsBD();   // 🔧 nuevo
+        iniciarBackupsBD();
     })
     .catch((e) => console.error('❌ [BD] Error al iniciar la base de datos:', e.message));
 

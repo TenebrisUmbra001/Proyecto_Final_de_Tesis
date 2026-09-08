@@ -1,6 +1,7 @@
 var STORAGE_KEY = 'rim_topologia';
 var SVGNS = 'http://www.w3.org/2000/svg';
 var municipioId = localStorage.getItem('rim_municipio_actual');
+var nombreMunicipioActual = localStorage.getItem('rim_municipio_nombre') || '';   // 🔧 NUEVO
 var datos = null;
 var ruta = [];
 var seleccion = null;
@@ -82,11 +83,11 @@ function iniciarAnimacionConexiones() {
 // ================= CARGA / GUARDADO =================
 function cargar() {
     document.getElementById('tituloMunicipio').textContent = 'Cargando...';
-    
+
     fetch('/api/topologia/db/' + encodeURIComponent(municipioId), { credentials: 'same-origin' })
         .then(function (r) {
             if (r.status === 404) {
-                return { nombre: 'Nuevo municipio', unidades: [], conexiones: [] };
+                return { nombre: nombreMunicipioActual || 'Nuevo municipio', unidades: [], conexiones: [] };
             }
             if (!r.ok) throw new Error('Error al cargar: ' + r.status);
             return r.json();
@@ -95,19 +96,33 @@ function cargar() {
             datos = data;
             datos.unidades = datos.unidades || [];
             datos.conexiones = datos.conexiones || [];
+
+            // 🔧 Reparar nombres malos ya guardados en BD (auto-fix al abrir)
+            if (nombreMunicipioActual && (!datos.nombre || datos.nombre === 'Nuevo municipio' || datos.nombre === 'Sin nombre')) {
+                datos.nombre = nombreMunicipioActual;
+                guardar();
+            }
+
             document.getElementById('tituloMunicipio').textContent = 'Información : ' + datos.nombre;
-            
+
             sincronizarTopologia();
             renderizar();
             iniciarAnimacionConexiones();
             cargarEstados();
             setInterval(cargarEstados, 30000);
+
+            // 🔧 Si venimos del panel con un equipo a enfocar
+            var enfocarId = localStorage.getItem('rim_enfocar_equipo');
+            if (enfocarId) {
+                localStorage.removeItem('rim_enfocar_equipo');
+                setTimeout(function () { enfocarEquipo(enfocarId); }, 300);
+            }
         })
         .catch(function (e) {
             console.error('Error cargando topología:', e);
             alert('Error al cargar la topología desde el servidor. Revisa la conexión.');
         });
-    
+
     return true;
 }
 
@@ -116,7 +131,7 @@ function guardar() {
         var todo = { municipios: {} };
         todo.municipios[municipioId] = datos;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(todo));
-    } catch (e) {}
+    } catch (e) { }
 
     fetch('/api/topologia/db/' + encodeURIComponent(municipioId), {
         method: 'PUT',
@@ -124,21 +139,21 @@ function guardar() {
         credentials: 'same-origin',
         body: JSON.stringify(datos)
     })
-    .then(function (r) {
-        if (!r.ok) throw new Error('Error al guardar');
-        return r.json();
-    })
-    .then(function () {
-        var ind = document.getElementById('indicadorGuardado');
-        ind.textContent = '✔ Guardado en BD';
-        setTimeout(function () { ind.textContent = ''; }, 1500);
-    })
-    .catch(function (e) {
-        console.error('Error guardando en BD:', e);
-        var ind = document.getElementById('indicadorGuardado');
-        ind.textContent = '❌ Error al guardar';
-        setTimeout(function () { ind.textContent = ''; }, 3000);
-    });
+        .then(function (r) {
+            if (!r.ok) throw new Error('Error al guardar');
+            return r.json();
+        })
+        .then(function () {
+            var ind = document.getElementById('indicadorGuardado');
+            ind.textContent = '✔ Guardado en BD';
+            setTimeout(function () { ind.textContent = ''; }, 1500);
+        })
+        .catch(function (e) {
+            console.error('Error guardando en BD:', e);
+            var ind = document.getElementById('indicadorGuardado');
+            ind.textContent = '❌ Error al guardar';
+            setTimeout(function () { ind.textContent = ''; }, 3000);
+        });
 }
 
 // ================= MIGRACIÓN de PCs viejas =================
@@ -225,7 +240,7 @@ function fallbackCopiar(txt) {
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); } catch (e) {}
+    try { document.execCommand('copy'); } catch (e) { }
     document.body.removeChild(ta);
 }
 
@@ -351,9 +366,9 @@ function iniciarTerminalSSH(ip, user, pass, nombreSwitch, equipoId) {
     cuerpo.innerHTML =
         '<div class="modal-terminal">' +
         '<div class="barra-superior">' +
-            '<span class="titulo">🔐 ' + esc(nombreSwitch) + ' — ' + esc(ip) + '</span>' +
-            '<span class="hint-ssh">Selecciona + Ctrl+C copia · Ctrl+V pega</span>' +
-            '<button id="btnCerrarTerm">✕ Cerrar</button>' +
+        '<span class="titulo">🔐 ' + esc(nombreSwitch) + ' — ' + esc(ip) + '</span>' +
+        '<span class="hint-ssh">Selecciona + Ctrl+C copia · Ctrl+V pega</span>' +
+        '<button id="btnCerrarTerm">✕ Cerrar</button>' +
         '</div>' +
         '<div id="xterm-container"></div>' +
         '</div>';
@@ -444,14 +459,14 @@ function iniciarTerminalSSH(ip, user, pass, nombreSwitch, equipoId) {
         try {
             fitAddon.fit();
             socket.emit('ssh-resize', { cols: term.cols, rows: term.rows });
-        } catch (e) {}
+        } catch (e) { }
     };
     window.addEventListener('resize', onResize);
 
     document.getElementById('btnCerrarTerm').addEventListener('click', function () {
         window.removeEventListener('resize', onResize);
         socket.disconnect();
-        try { term.dispose(); } catch (e) {}
+        try { term.dispose(); } catch (e) { }
         cerrarModal();
     });
 }
@@ -472,7 +487,36 @@ function tamanosPorTipo(tipo) {
     if (tipo === 'pc') return { w: 80, h: 60 };
     return { w: 80, h: 80 };
 }
+// 🔧 Busca un objeto y devuelve también su cadena de contenedores padres
+function buscarConPadres(id) {
+    var resultado = null;
+    function rec(obj, padres) {
+        if (resultado) return;
+        if (obj.id === id) { resultado = { obj: obj, padres: padres }; return; }
+        var hijos = hijosDe(obj);
+        for (var i = 0; i < hijos.length; i++) {
+            rec(hijos[i], esContenedor(hijos[i].tipo) ? padres.concat([hijos[i]]) : padres);
+        }
+    }
+    for (var u = 0; u < datos.unidades.length && !resultado; u++) {
+        rec(datos.unidades[u], [datos.unidades[u]]);
+    }
+    return resultado;
+}
 
+// 🔧 Navega hasta el equipo, lo selecciona y lo resalta
+function enfocarEquipo(id) {
+    var r = buscarConPadres(id);
+    if (!r) return;
+    ruta = r.padres;
+    renderizar();
+    seleccionar(r.obj);
+    var el = document.querySelector('.elemento[data-id="' + id + '"]');
+    if (el) {
+        el.style.boxShadow = '0 0 0 4px #f39c12';
+        setTimeout(function () { el.style.boxShadow = ''; }, 3000);
+    }
+}
 function buscarObjPorId(id) {
     function rec(obj) {
         if (obj.id === id) return obj;
@@ -2002,7 +2046,7 @@ function eliminarPorId(id) {
 
 function iniciar() {
     cargar();
-    
+
     fetch('/api/sesion', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (s) {

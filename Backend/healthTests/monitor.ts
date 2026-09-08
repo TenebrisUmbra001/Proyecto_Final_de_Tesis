@@ -10,6 +10,7 @@ export interface RecursoMonitoreo {
     nombre: string;
     ip: string;
     municipio: string;
+    municipioId?: string;
     prioridad: string;
     gestionable?: boolean;
     puerto?: number;
@@ -41,6 +42,18 @@ export function setTopologia(t: any) {
     topologia = t;
     try {
         fs.writeFileSync(TOPO_FILE, JSON.stringify(t));
+    } catch (e) {
+        console.error('[MONITOR] No se pudo persistir topología:', e);
+    }
+}
+
+// 🔧 NUEVO: actualiza SOLO un municipio sin pisar los demás
+export function setTopologiaMunicipio(munId: string, datos: any) {
+    if (!topologia) topologia = { municipios: {} };
+    if (!topologia.municipios) topologia.municipios = {};
+    topologia.municipios[munId] = datos;
+    try {
+        fs.writeFileSync(TOPO_FILE, JSON.stringify(topologia));
     } catch (e) {
         console.error('[MONITOR] No se pudo persistir topología:', e);
     }
@@ -97,6 +110,7 @@ export function extraerRecursos(): RecursoMonitoreo[] {
                     nombre: eq.descripcion || eq.nombre || '',
                     ip: eq.ip,
                     municipio: mun.nombre,
+                    municipioId: munId,
                     prioridad: eq.prioridad || 'media',
                     gestionable: !!eq.gestionable,
                     pcs: pcsDeSwitch[eq.id] || []
@@ -110,6 +124,7 @@ export function extraerRecursos(): RecursoMonitoreo[] {
                     nombre: sv.descripcion || sv.nombre || '',
                     ip: sv.ip,
                     municipio: mun.nombre,
+                    municipioId: munId,
                     prioridad: sv.prioridad || 'alta',
                     puerto: sv.puerto || PUERTOS_SERVICIO[sv.tipo] || 22
                 });
@@ -122,6 +137,7 @@ export function extraerRecursos(): RecursoMonitoreo[] {
                     nombre: pc.descripcion || pc.nombre || '',
                     ip: pc.ip,
                     municipio: mun.nombre,
+                    municipioId: munId,
                     prioridad: pc.prioridad || 'baja'
                 });
             }
@@ -139,7 +155,7 @@ export function extraerRecursos(): RecursoMonitoreo[] {
     return lista;
 }
 
-async function evaluarRecurso(r: RecursoMonitoreo): Promise<{ ok: boolean; detalle: string; ms: number }> {
+async function evaluarRecurso(r: RecursoMonitoreo): Promise<{ ok: boolean; detalle: string; ms: number; degradado?: boolean }> {
     if (r.tipo === 'pc') {
         const p = await ping(r.ip);
         return p.ok ? { ok: true, detalle: 'ping ok', ms: p.ms } : { ok: false, detalle: 'sin respuesta a ping', ms: -1 };
@@ -151,12 +167,12 @@ async function evaluarRecurso(r: RecursoMonitoreo): Promise<{ ok: boolean; detal
             if (r.gestionable) {
                 const ssh = await sshCheck(r.ip);
                 if (!ssh) {
-                    return { ok: false, detalle: 'ping OK pero SSH (22) no responde: problema de conectividad/configuración', ms: p.ms };
+                    return { ok: true, degradado: true, detalle: 'ping OK pero SSH (22) no responde: equipo accesible, gestión caída', ms: p.ms };
                 }
             }
             return { ok: true, detalle: 'ping ok' + (r.gestionable ? ' + ssh ok' : ''), ms: p.ms };
         }
-        
+
         if (r.pcs && r.pcs.length > 0) {
             for (const pc of r.pcs) {
                 const pp = await ping(pc.ip);
@@ -208,7 +224,7 @@ async function evaluarConReintento(r: RecursoMonitoreo) {
     const est = registrar(r.id, res);
 
     if (res.ok) {
-        est.estado = 'online';
+        est.estado = res.degradado ? 'degradado' : 'online';
         est.intentos = 0;
         return;
     }
@@ -217,15 +233,15 @@ async function evaluarConReintento(r: RecursoMonitoreo) {
     if (!est.reintentoProgramado) {
         est.reintentoProgramado = true;
         console.log(`[MONITOR] Fallo en ${r.nombre} → reintento en 2 min`);
-        
+
         setTimeout(async () => {
             est.reintentoProgramado = false;
             const res2 = await evaluarRecurso(r);
             registrar(r.id, res2);
-            
+
             if (!res2.ok) {
                 est.estado = 'offline';
-                console.log(`[MONITOR] OFFLINE confirmado: ${r.nombre} (${r.ip})`);
+                console.log(`[MONITOR] OFFLINE confirmado: ${r.nombre} (${r.ip}) — ${res2.detalle}`);
                 await notificarSegunPrioridad(r, res2.detalle);
             } else {
                 est.estado = 'online';
@@ -239,7 +255,7 @@ async function evaluarConReintento(r: RecursoMonitoreo) {
 async function ciclo() {
     const recursos = extraerRecursos();
     console.log(`[MONITOR] Ciclo de chequeo: ${recursos.length} recursos`);
-    
+
     for (const r of recursos) {
         try {
             await evaluarConReintento(r);
@@ -249,11 +265,12 @@ async function ciclo() {
     }
     persistir();
 }
+
 export function getTopologia() {
     return topologia;
 }
+
 export function iniciarMonitor() {
-    // 🔧 Recuperar topología persistida
     try {
         if (fs.existsSync(TOPO_FILE)) {
             topologia = JSON.parse(fs.readFileSync(TOPO_FILE, 'utf8'));
@@ -263,14 +280,13 @@ export function iniciarMonitor() {
         console.error('[MONITOR] No se pudo leer topología:', e);
     }
 
-    // 🔧 Recuperar últimos estados conocidos (el mapa no queda gris al reiniciar)
     try {
         const HIST_FILE = path.join(__dirname, '../db/historial_estados.json');
         if (fs.existsSync(HIST_FILE)) {
             const prev = JSON.parse(fs.readFileSync(HIST_FILE, 'utf8'));
             var claves = Object.keys(prev);
             for (var i = 0; i < claves.length; i++) {
-                prev[claves[i]].reintentoProgramado = false; // limpia flags viejos
+                prev[claves[i]].reintentoProgramado = false;
                 estados[claves[i]] = prev[claves[i]];
             }
             console.log('[MONITOR] Estados previos cargados: ' + claves.length);

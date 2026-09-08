@@ -4,12 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <title>Panel Administrativo — RIM</title>
+  <!--- <script src="/private/libs/es6-promise.min.js"></script>
+  <script src="/private/libs/fetch.min.js"></script>--->
   <script src="/private/libs/socket.io.slim.js"></script>
   <script src="/private/libs/chart.min.js"></script>
+  <script src="/private/libs/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="/private/libs/xterm.css">
+  <link rel="stylesheet" href="../private/Styles/admin.css">
   <script src="/private/libs/xterm.js"></script>
   <script src="/private/libs/xterm-addon-fit.js"></script>
-  <link rel="stylesheet" href="styles/admin.css">
 </head>
 
 <body>
@@ -32,10 +35,19 @@
     <button class="tab" data-tab="usuarios" id="tabUsuariosBtn" style="display:none;">👥 Usuarios</button>
     <button class="tab" data-tab="auditoria">🔐 Auditoría SSH</button>
     <button class="tab" data-tab="configs">💾 Configs</button>
+    <button class="tab" data-tab="oracle">🗄️ Oracle ASM</button>
     <button class="tab" data-tab="backups">🗄️ Backups BD</button>
+
   </div>
 
   <main>
+    <section id="tab-oracle" style="display:none">
+      <div class="toolbar">
+        <h3>🗄️ Diskgroups ASM (espacio de las BD)</h3>
+        <button class="btn b-azul" id="btnRefrescarAsm">🔄 Refrescar ahora</button>
+      </div>
+      <div id="tablaAsm"></div>
+    </section>
     <section id="tab-equipos">
       <div class="toolbar">
         <h3>🖧 Equipos y servicios monitoreados</h3>
@@ -48,6 +60,7 @@
             <option value="">Todos los tipos</option>
             <option value="switch">Switch</option>
             <option value="modem">Modem</option>
+            <option value="transceiver">Transceiver</option>
             <option value="pc">PC</option>
             <option value="servidor">Servidor</option>
           </select>
@@ -64,7 +77,19 @@
     </section>
 
     <section id="tab-estadisticas" style="display:none">
+      <div class="toolbar">
+        <h3>📊 Dashboard de inventario</h3>
+        <div class="filtros">
+          <button class="btn b-verde" id="btnExportXlsx">📥 Exportar Excel</button>
+          <button class="btn b-azul" id="btnExportOracle">🗄️ Exportar Oracle</button>
+          <button class="btn b-oscuro" id="btnExportSql">📜 Exportar SQL</button>
+        </div>
+      </div>
       <div class="cards" id="statsCards"></div>
+      <div class="chart-box" style="margin-bottom:20px">
+        <h4>🖧 Totales por tipo de equipo</h4>
+        <div id="statsPorTipo"></div>
+      </div>
       <div class="charts">
         <div class="chart-box">
           <h4>📊 Distribución por tipo</h4>
@@ -113,9 +138,10 @@
     <section id="tab-configs" style="display:none">
       <div id="tablaConfigs"></div>
     </section>
+
     <section id="tab-backups" style="display:none">
       <div class="toolbar">
-        <h3>🗄️ Respaldos de PostgreSQL (automático diario 02:00 · retención 7 días)</h3>
+        <h3>🗄️ Respaldos de PostgreSQL (diario 02:00 · retención 7 días)</h3>
         <button class="btn b-verde" id="btnBackupAhora">💾 Respaldar ahora</button>
       </div>
       <div id="tablaBackups"></div>

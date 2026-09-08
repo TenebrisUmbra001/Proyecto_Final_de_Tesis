@@ -4772,5 +4772,948 @@
         "detalle": "ping ok + ssh ok"
       }
     ]
+  },
+  "switch-1788873068475": {
+    "estado": "offline",
+    "intentos": 78,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1788895964417,
+      "ok": false,
+      "ms": -1,
+      "detalle": "sin respuesta a ping"
+    },
+    "historial": [
+      {
+        "t": 1788873223393,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788873344445,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788873523406,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788873644462,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788873823383,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788873945893,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788874123399,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788874244447,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788874423406,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788874544446,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788874723405,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788874844439,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875023421,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875144457,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875323416,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875444447,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875623432,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875744468,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788875923440,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876044482,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876223440,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876344478,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876523456,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876644501,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876823470,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788876944516,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788877123489,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788877245894,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788877423582,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788877544637,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788877723505,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788877844560,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878023508,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878144558,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878323524,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878444578,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878623517,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878744560,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788878923537,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879044587,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879223518,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879344572,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879523538,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879644588,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879823559,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788879945007,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880123732,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880244929,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880423661,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880544835,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880723583,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880799456,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788880921913,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881094432,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881215480,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881394433,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881515471,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881694432,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881815476,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788881994450,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788882115480,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788882294454,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788882415507,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788882594469,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788882715515,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788882894465,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883015520,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883194483,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883316861,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883494483,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883615532,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883794488,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788883915533,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884094516,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884215555,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884394505,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884515548,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884694498,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884815542,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788884994499,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788885115550,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788885294514,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788885415548,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788885595868,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788885716902,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788885894530,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886015606,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886194546,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886315591,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886494553,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886615604,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886794552,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788886915622,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887094551,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887215595,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887394644,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887515772,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887694569,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887816858,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788887994563,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788888115666,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788888297363,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788888418420,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788888594579,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788888715621,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788888894880,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889016143,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889194604,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889315687,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889494609,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889618358,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889725506,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788889846552,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890020481,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890141536,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890321886,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890444391,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890621883,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890742931,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788890920506,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891041546,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891223360,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891344395,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891523358,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891644406,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891820527,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788891941574,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892086250,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892209860,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892381245,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892503365,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892681267,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892804859,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788892983861,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788893104916,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788893283868,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788893407864,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788893581290,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788893702336,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788893881302,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894003356,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894181304,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894302346,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894481307,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894602370,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894782387,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788894903418,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895081310,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895202367,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895381332,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895502383,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895681313,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895802361,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895843361,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      },
+      {
+        "t": 1788895964417,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping"
+      }
+    ]
   }
 }

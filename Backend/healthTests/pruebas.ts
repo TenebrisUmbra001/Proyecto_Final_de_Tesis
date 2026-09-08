@@ -1,48 +1,49 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import * as net from 'net';
 import * as dns from 'dns';
 
-export function ping(ip: string, timeoutMs = 2000): Promise<{ ok: boolean; ms: number }> {
+// 🌐 PING independiente del idioma del SO (usa el marcador TTL, no el texto)
+export function ping(ip: string): Promise<{ ok: boolean; ms: number }> {
     return new Promise((resolve) => {
         const isWin = process.platform === 'win32';
-        const cmd = isWin
-            ? `ping -n 1 -w ${timeoutMs} ${ip}`
-            : `ping -c 1 -W ${Math.ceil(timeoutMs / 1000)} ${ip}`;
-        
+        const args = isWin ? ['-n', '2', '-w', '1500', ip] : ['-c', '2', '-W', '2', ip];
         const t0 = Date.now();
-        exec(cmd, { timeout: timeoutMs + 1500 }, (error, stdout) => {
-            const ms = Date.now() - t0;
-            if (error) return resolve({ ok: false, ms: -1 });
-            if (/100% loss|unreachable|destino inaccesible/i.test(stdout)) {
-                return resolve({ ok: false, ms: -1 });
-            }
-            resolve({ ok: true, ms });
+        execFile('ping', args, { timeout: 8000 }, (error, stdout) => {
+            const out = String(stdout || '');
+            // TTL solo aparece si hubo respuesta real (en cualquier idioma)
+            const ok = /TTL=/i.test(out);
+            const m = /(?:tiempo|time)[=<](\d+)ms/i.exec(out);
+            resolve({ ok: ok, ms: m ? parseInt(m[1], 10) : Date.now() - t0 });
         });
     });
 }
 
+// 🔌 Puerto TCP abierto?
 export function puertoTcp(ip: string, puerto: number, timeoutMs = 3000): Promise<boolean> {
     return new Promise((resolve) => {
-        const socket = net.connect({ host: ip, port: puerto, timeout: timeoutMs });
-        socket.once('connect', () => { socket.destroy(); resolve(true); });
-        socket.once('timeout', () => { socket.destroy(); resolve(false); });
-        socket.once('error', () => { socket.destroy(); resolve(false); });
+        let listo = false;
+        const fin = (v: boolean) => { if (!listo) { listo = true; resolve(v); } };
+        const s = net.connect({ host: ip, port: puerto, timeout: timeoutMs });
+        s.once('connect', () => { s.destroy(); fin(true); });
+        s.once('timeout', () => { s.destroy(); fin(false); });
+        s.once('error', () => { s.destroy(); fin(false); });
     });
 }
 
+// 🔐 SSH = puerto 22 abierto
 export function sshCheck(ip: string): Promise<boolean> {
     return puertoTcp(ip, 22);
 }
 
-export function dnsCheck(ip: string): Promise<boolean> {
+// 🌍 El servidor DNS resuelve?
+export function dnsCheck(servidor: string): Promise<boolean> {
+    const dominio = process.env.DNS_DOMINIO_PRUEBA || 'google.com';
     return new Promise((resolve) => {
-        const dominio = process.env.DNS_DOMINIO_PRUEBA || 'intranet.cu';
+        let listo = false;
+        const fin = (v: boolean) => { if (!listo) { listo = true; resolve(v); } };
         const r = new dns.Resolver();
-        r.setServers([ip]);
-        const t = setTimeout(() => resolve(false), 3000);
-        r.resolve4(dominio, (err) => {
-            clearTimeout(t);
-            resolve(!err);
-        });
+        r.setServers([servidor]);
+        r.resolve4(dominio, (err) => fin(!err));
+        setTimeout(() => fin(false), 4000);
     });
 }

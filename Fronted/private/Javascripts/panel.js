@@ -1,6 +1,8 @@
 var equiposCache = [];
 var usuariosCache = [];
 var contactosCache = [];
+var avisosCache = [];
+var auditoriaCache = [];
 var contactoEditId = null;
 var usuarioEditId = null;
 var rolActual = 'operador';
@@ -15,9 +17,9 @@ var paginaAuditoria = 1;
 // 🔧 Gráficos (instancias para destruir al refrescar)
 var chartTipo = null, chartEstado = null, chartMunicipio = null;
 
-function esc(t) { return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
-function abrirModal(t, c) { document.getElementById('modalTitulo').textContent = t; var cu = document.getElementById('modalCuerpo'); cu.style.padding='20px'; cu.style.overflowY='auto'; cu.innerHTML = c; document.getElementById('modal').style.display = 'flex'; }
+function abrirModal(t, c) { document.getElementById('modalTitulo').textContent = t; var cu = document.getElementById('modalCuerpo'); cu.style.padding = '20px'; cu.style.overflowY = 'auto'; cu.innerHTML = c; document.getElementById('modal').style.display = 'flex'; }
 function cerrarModal() { document.getElementById('modal').style.display = 'none'; }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -29,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('userActual').textContent = '👤 ' + (s.nombre || '') + ' · ' + rolActual;
             if (rolActual === 'admin' || rolActual === 'superadmin') document.getElementById('tabUsuariosBtn').style.display = '';
             if (rolActual === 'superadmin') document.getElementById('btnNuevoUsuario').style.display = '';
-        }).catch(function () {});
+        }).catch(function () { });
 
     document.getElementById('btnSalir').addEventListener('click', function () {
         fetch('/api/logout', { method: 'POST' }).then(function () { location.href = '/'; });
@@ -41,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
             for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('activa');
             this.classList.add('activa');
             var t = this.getAttribute('data-tab');
-            var secs = ['equipos','estadisticas','notificaciones','avisos','usuarios','auditoria','configs','backups']; // 🔧 NUEVO: backups
+            var secs = ['equipos', 'estadisticas', 'notificaciones', 'avisos', 'usuarios', 'auditoria', 'configs', 'backups', 'oracle']; // 🔧 NUEVO: oracle
             for (var k = 0; k < secs.length; k++)
                 document.getElementById('tab-' + secs[k]).style.display = (secs[k] === t) ? '' : 'none';
             if (t === 'equipos') cargarEquipos();
@@ -51,7 +53,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (t === 'usuarios') cargarUsuarios();
             if (t === 'auditoria') { paginaAuditoria = 1; cargarAuditoria(); }
             if (t === 'configs') cargarConfigs();
-            if (t === 'backups') cargarBackups(); // 🔧 NUEVO
+            if (t === 'backups') cargarBackups();
+            if (t === 'oracle') cargarOracleAsm(); // 🔧 NUEVO
         });
     }
 
@@ -64,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btnNuevoContacto').addEventListener('click', function () { abrirModalContacto(null); });
     document.getElementById('btnNuevoUsuario').addEventListener('click', function () { abrirModalUsuario(null); });
 
-    // 🔧 NUEVO: botón de respaldo manual
+    // 🔧 Backup manual de BD
     document.getElementById('btnBackupAhora').addEventListener('click', function () {
         this.disabled = true;
         this.textContent = '⏳ Respaldando...';
@@ -77,6 +80,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 else { alert('Backup creado: ' + d.archivo); cargarBackups(); }
             })
             .catch(function () { btn.disabled = false; btn.textContent = '💾 Respaldar ahora'; });
+    });
+
+    // 🔧 Botones de exportación
+    document.getElementById('btnExportXlsx').addEventListener('click', exportarExcel);
+    document.getElementById('btnExportOracle').addEventListener('click', exportarOracle);
+    document.getElementById('btnExportSql').addEventListener('click', exportarSql);
+
+    // 🔧 NUEVO: Botón refrescar Oracle ASM
+    document.getElementById('btnRefrescarAsm').addEventListener('click', function () {
+        this.disabled = true; this.textContent = '⏳ Consultando...';
+        var btn = this;
+        fetch('/api/admin/oracle-asm/refrescar', { method: 'POST', credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function () { btn.disabled = false; btn.textContent = '🔄 Refrescar ahora'; cargarOracleAsm(); })
+            .catch(function () { btn.disabled = false; btn.textContent = '🔄 Refrescar ahora'; });
     });
 
     cargarMunicipiosFiltro();
@@ -96,14 +114,14 @@ function cargarMunicipiosFiltro() {
                 op.textContent = lista[i].nombre;
                 sel.appendChild(op);
             }
-        }).catch(function () {});
+        }).catch(function () { });
 }
 
 // ================= EQUIPOS (con filtros + paginación) =================
 function cargarEquipos() {
     fetch('/api/admin/equipos', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         equiposCache = lista; renderEquipos();
-    }).catch(function () {});
+    }).catch(function () { });
 }
 
 function filtrarEquipos() {
@@ -185,6 +203,8 @@ function abrirModalEquipo(e) {
     if (e.gestion === 'Web') html += '<button class="btn b-verde" id="mWeb">🌐 Admin Web</button>';
     if (e.gestion === 'Telnet') html += '<button class="btn b-gris" id="mTel">📟 Telnet</button>';
     html += '<button class="btn b-azul" id="mMapa">🗺️ Ver en mapa</button>';
+    if (rolActual === 'admin' || rolActual === 'superadmin') html += '<button class="btn b-azul" id="mEditar">✏️ Editar</button>';
+    if (rolActual === 'superadmin') html += '<button class="btn b-rojo" id="mEliminar">🗑️ Eliminar</button>';
     html += '<button class="btn b-rojo" id="mCerrar">Cerrar</button></div>';
     abrirModal('🖧 ' + e.nombre, html);
 
@@ -192,8 +212,73 @@ function abrirModalEquipo(e) {
     if ((b = document.getElementById('mSSH'))) b.onclick = function () { abrirConsolaSSH(e.ip, e.nombre, e.id); };
     if ((b = document.getElementById('mWeb'))) b.onclick = function () { abrirWeb(e.ip, e.nombre); };
     if ((b = document.getElementById('mTel'))) b.onclick = function () { abrirModal('📟 Telnet', '<p>Ejecuta:</p><div style="background:#1e1e1e;color:#0f0;padding:10px;font-family:monospace;">telnet ' + esc(e.ip) + '</div>'); };
-    if ((b = document.getElementById('mMapa'))) b.onclick = function () { localStorage.setItem('rim_municipio_actual', e.municipioId); window.open('/private/topologia.html', '_blank'); };
+    if ((b = document.getElementById('mMapa'))) b.onclick = function () {
+        localStorage.setItem('rim_municipio_actual', e.municipioId);
+        localStorage.setItem('rim_enfocar_equipo', e.id);
+        window.open('/private/topologia.html', '_blank');
+    };
+    if ((b = document.getElementById('mEditar'))) b.onclick = function () { abrirModalEditarEquipo(e); };
+    if ((b = document.getElementById('mEliminar'))) b.onclick = function () { eliminarEquipoDesdePanel(e); };
     document.getElementById('mCerrar').onclick = cerrarModal;
+}
+
+// ✏️ Modal de edición de datos de placa
+function abrirModalEditarEquipo(e) {
+    abrirModal('✏️ Editar: ' + esc(e.nombre),
+        '<label>Descripción *</label><input id="eDesc" value="' + esc(e.nombre) + '">' +
+        '<label>PR / Código</label><input id="ePR" value="' + esc(e.pr || '') + '">' +
+        '<label>Sello</label><input id="eSello" value="' + esc(e.sello || '') + '">' +
+        '<label>Marca</label><input id="eMarca" value="' + esc(e.marca || '') + '">' +
+        '<label>Modelo</label><input id="eModelo" value="' + esc(e.modelo || '') + '">' +
+        '<label>Prioridad</label><select id="ePrio">' +
+            '<option value="alta"' + (e.prioridad === 'alta' ? ' selected' : '') + '>alta</option>' +
+            '<option value="media"' + (e.prioridad === 'media' ? ' selected' : '') + '>media</option>' +
+            '<option value="baja"' + ((!e.prioridad || e.prioridad === 'baja') ? ' selected' : '') + '>baja</option></select>' +
+        '<div style="text-align:center;margin-top:18px;"><button class="btn b-verde" id="btnGuardarEdit">💾 Guardar</button>' +
+        '<button class="btn b-gris" id="btnCancelEdit">Cancelar</button></div>');
+
+    document.getElementById('btnCancelEdit').onclick = cerrarModal;
+    document.getElementById('btnGuardarEdit').onclick = function () {
+        var desc = val('eDesc');
+        if (!desc) { alert('La descripción es obligatoria'); return; }
+        var body = {
+            municipioId: e.municipioId,
+            descripcion: desc,
+            pr: val('ePR'), sello: val('eSello'),
+            marca: val('eMarca'), modelo: val('eModelo'),
+            prioridad: document.getElementById('ePrio').value
+        };
+        fetch('/api/admin/equipos/' + e.id, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body), credentials: 'same-origin'
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.error) { alert('Error: ' + d.error); return; }
+            cerrarModal();
+            cargarEquipos();
+            alert('Equipo actualizado correctamente');
+        })
+        .catch(function () { alert('Error al guardar'); });
+    };
+}
+
+// 🗑️ Eliminar equipo desde el panel
+function eliminarEquipoDesdePanel(e) {
+    if (!confirm('¿Eliminar el equipo "' + e.nombre + '"?\nSe eliminarán también sus conexiones.')) return;
+    if (!confirm('CONFIRMAR: esta acción no se puede deshacer. ¿Continuar?')) return;
+
+    fetch('/api/admin/equipos/' + e.id + '?mun=' + encodeURIComponent(e.municipioId), {
+        method: 'DELETE', credentials: 'same-origin'
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+        if (d.error) { alert('Error: ' + d.error); return; }
+        cerrarModal();
+        cargarEquipos();
+        alert('Equipo eliminado correctamente');
+    })
+    .catch(function () { alert('Error al eliminar'); });
 }
 
 function abrirWeb(ip, nombre) {
@@ -205,16 +290,37 @@ function abrirWeb(ip, nombre) {
     document.getElementById('wHttp').onclick = function () { var p = val('webPort'); window.open('http://' + ip + (p ? ':' + p : ''), '_blank'); };
 }
 
-// ================= DASHBOARD CON GRÁFICOS =================
+// ================= DASHBOARD CON GRÁFICOS + TOTALES =================
 function cargarStats() {
     fetch('/api/admin/estadisticas', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
-        // Cards
+        // Total general de equipos
+        var totalEquipos = 0;
+        for (var t in st.porTipo) totalEquipos += st.porTipo[t];
+
+        // Cards ampliadas
         document.getElementById('statsCards').innerHTML =
             '<div class="card"><div class="num">' + st.total + '</div><div class="lbl">Recursos totales</div></div>' +
+            '<div class="card"><div class="num">' + totalEquipos + '</div><div class="lbl">Total equipos</div></div>' +
             '<div class="card verde"><div class="num" style="color:#21c063">' + st.porEstado.online + '</div><div class="lbl">En línea</div></div>' +
             '<div class="card rojo"><div class="num" style="color:#e74c3c">' + st.porEstado.offline + '</div><div class="lbl">Caídos</div></div>' +
             '<div class="card naranja"><div class="num" style="color:#f39c12">' + st.porEstado.degradado + '</div><div class="lbl">Degradados</div></div>' +
             '<div class="card gris"><div class="num">' + st.disponibilidad + '%</div><div class="lbl">Disponibilidad</div></div>';
+
+        // Tabla de totales por tipo con barras
+        var maxTipo = 0;
+        for (var tt in st.porTipo) if (st.porTipo[tt] > maxTipo) maxTipo = st.porTipo[tt];
+        var htmlTipos = '<table><tr><th>Tipo</th><th>Cantidad</th><th>% del total</th><th style="width:35%"></th></tr>';
+        for (var tp in st.porTipo) {
+            var cant = st.porTipo[tp];
+            var pctTotal = totalEquipos ? Math.round(100 * cant / totalEquipos) : 0;
+            var pctBarra = maxTipo ? Math.round(100 * cant / maxTipo) : 0;
+            htmlTipos += '<tr><td><strong>' + esc(tp.toUpperCase()) + '</strong></td>' +
+                '<td>' + cant + '</td><td>' + pctTotal + '%</td>' +
+                '<td><div class="barra"><div class="relleno" style="width:' + pctBarra + '%;background:linear-gradient(90deg,#3498db,#21c063)"></div></div></td></tr>';
+        }
+        htmlTipos += '<tr style="background:#0f3460;color:#fff;"><td><strong>TOTAL</strong></td><td><strong>' + totalEquipos + '</strong></td><td>100%</td><td></td></tr>';
+        htmlTipos += '</table>';
+        document.getElementById('statsPorTipo').innerHTML = htmlTipos;
 
         dibujarGraficos(st);
 
@@ -228,11 +334,10 @@ function cargarStats() {
         }
         html += '</table>';
         document.getElementById('statsTabla').innerHTML = html;
-    }).catch(function () {});
+    }).catch(function () { });
 }
 
 function dibujarGraficos(st) {
-    // Destruir gráficos anteriores para evitar "canvas already in use"
     if (chartTipo) { chartTipo.destroy(); chartTipo = null; }
     if (chartEstado) { chartEstado.destroy(); chartEstado = null; }
     if (chartMunicipio) { chartMunicipio.destroy(); chartMunicipio = null; }
@@ -241,7 +346,6 @@ function dibujarGraficos(st) {
     Chart.defaults.color = '#9fb3c8';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
 
-    // Gráfico por tipo (dona)
     var tipos = Object.keys(st.porTipo);
     chartTipo = new Chart(document.getElementById('chartTipo'), {
         type: 'doughnut',
@@ -252,7 +356,6 @@ function dibujarGraficos(st) {
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
     });
 
-    // Gráfico de estado (dona)
     chartEstado = new Chart(document.getElementById('chartEstado'), {
         type: 'doughnut',
         data: {
@@ -262,7 +365,6 @@ function dibujarGraficos(st) {
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
     });
 
-    // Gráfico por municipio (barras)
     var munis = Object.keys(st.porMunicipio);
     chartMunicipio = new Chart(document.getElementById('chartMunicipio'), {
         type: 'bar',
@@ -285,8 +387,8 @@ function abrirModalContacto(c) {
         '<label>Correo</label><input id="cCorreo" value="' + esc(c ? c.correo : '') + '">' +
         '<label>Teléfono SMS</label><input id="cTelefono" value="' + esc(c ? c.telefono : '') + '">' +
         '<label>Recibe alertas de prioridad</label><select id="cPrioMin">' +
-            '<option value="media"' + (c && c.prioridad_minima === 'media' ? ' selected' : '') + '>media y alta</option>' +
-            '<option value="alta"' + (c && c.prioridad_minima === 'alta' ? ' selected' : '') + '>solo alta</option></select>' +
+        '<option value="media"' + (c && c.prioridad_minima === 'media' ? ' selected' : '') + '>media y alta</option>' +
+        '<option value="alta"' + (c && c.prioridad_minima === 'alta' ? ' selected' : '') + '>solo alta</option></select>' +
         '<label style="margin-top:14px;"><input type="checkbox" id="cActivo" style="width:auto"' + (!c || c.activo ? ' checked' : '') + '> Activo</label>' +
         '<label><input type="checkbox" id="cCorreoCh" style="width:auto"' + (!c || c.canal_correo ? ' checked' : '') + '> Recibir por correo</label>' +
         '<label><input type="checkbox" id="cSms" style="width:auto"' + (c && c.canal_sms ? ' checked' : '') + '> Recibir por SMS</label>' +
@@ -340,16 +442,15 @@ function cargarContactos() {
                 }
             });
         }
-    }).catch(function () {});
+    }).catch(function () { });
 }
 
 // ================= AVISOS (paginado) =================
-var avisosCache = [];
 function cargarAvisos() {
     fetch('/api/admin/avisos', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         avisosCache = lista;
         renderAvisos();
-    }).catch(function () {});
+    }).catch(function () { });
 }
 function renderAvisos() {
     var totalPaginas = Math.max(1, Math.ceil(avisosCache.length / TAM_PAGINA));
@@ -379,9 +480,9 @@ function abrirModalUsuario(u) {
         '<label>Nombre completo</label><input id="uNombre" value="' + esc(u ? u.nombre : '') + '">' +
         '<label>Contraseña ' + (u ? '(vacío = no cambiar)' : '*') + '</label><input type="password" id="uPassword">' +
         '<label>Rol</label><select id="uRol">' +
-            '<option value="operador"' + (u && u.rol === 'operador' ? ' selected' : '') + '>Operador</option>' +
-            '<option value="admin"' + (u && u.rol === 'admin' ? ' selected' : '') + '>Administrador</option>' +
-            '<option value="superadmin"' + (u && u.rol === 'superadmin' ? ' selected' : '') + '>Super Administrador</option></select>' +
+        '<option value="operador"' + (u && u.rol === 'operador' ? ' selected' : '') + '>Operador</option>' +
+        '<option value="admin"' + (u && u.rol === 'admin' ? ' selected' : '') + '>Administrador</option>' +
+        '<option value="superadmin"' + (u && u.rol === 'superadmin' ? ' selected' : '') + '>Super Administrador</option></select>' +
         '<label style="margin-top:14px;"><input type="checkbox" id="uActivo" style="width:auto"' + (!u || u.activo ? ' checked' : '') + '> Activo</label>' +
         '<div style="text-align:center;margin-top:18px;"><button class="btn b-verde" id="btnGuardarUsuario">💾 Guardar</button>' +
         '<button class="btn b-gris" id="btnCancelarUsuario">Cancelar</button></div>');
@@ -432,16 +533,15 @@ function cargarUsuarios() {
                 });
             }
         }
-    }).catch(function () {});
+    }).catch(function () { });
 }
 
 // ================= AUDITORÍA SSH (paginada) =================
-var auditoriaCache = [];
 function cargarAuditoria() {
     fetch('/api/admin/auditoria', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         auditoriaCache = lista;
         renderAuditoria();
-    }).catch(function () {});
+    }).catch(function () { });
 }
 function renderAuditoria() {
     var totalPaginas = Math.max(1, Math.ceil(auditoriaCache.length / TAM_PAGINA));
@@ -485,10 +585,10 @@ function cargarConfigs() {
                 });
             });
         }
-    }).catch(function () {});
+    }).catch(function () { });
 }
 
-// ================= BACKUPS DE BD ================= // 🔧 NUEVO
+// ================= BACKUPS DE BD =================
 function cargarBackups() {
     fetch('/api/admin/backups-bd', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         var html = '<table><tr><th>Archivo</th><th>Fecha</th><th>Tamaño</th><th></th></tr>';
@@ -501,7 +601,202 @@ function cargarBackups() {
         }
         html += '</table>';
         document.getElementById('tablaBackups').innerHTML = html;
-    }).catch(function () {});
+    }).catch(function () { });
+}
+
+// ================= EXPORTACIÓN (inventario físico) =================
+
+// Helper: descargar archivo en navegador
+function descargarArchivo(contenido, nombre, mime) {
+    var blob = new Blob([contenido], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+// Helper: obtener inventario físico (solo datos de placa)
+function obtenerDatosParaExportar(cb) {
+    fetch('/api/admin/inventario-fisico', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (lista) { cb(lista); })
+        .catch(function () { alert('Error al cargar datos para exportar'); });
+}
+
+// 📥 1. Exportar a Excel (.xlsx)
+function exportarExcel() {
+    obtenerDatosParaExportar(function (lista) {
+        var filas = lista.map(function (e) {
+            var fecha = e.fecha_instalacion ? new Date(e.fecha_instalacion).toISOString().slice(0, 10) : '';
+            return {
+                'ID': e.id,
+                'Tipo': e.tipo,
+                'Descripción': e.descripcion,
+                'PR / Código': e.pr,
+                'Sello': e.sello,
+                'Marca': e.marca,
+                'Modelo': e.modelo,
+                'Fecha instalación': fecha,
+                'Ubicación': e.ubicacion,
+                'Municipio': e.municipio
+            };
+        });
+        var ws = XLSX.utils.json_to_sheet(filas);
+        ws['!cols'] = [
+            { wch: 22 }, { wch: 12 }, { wch: 30 }, { wch: 12 },
+            { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 12 },
+            { wch: 40 }, { wch: 20 }
+        ];
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventario Físico');
+        var fecha = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, 'inventario_fisico_rim_' + fecha + '.xlsx');
+    });
+}
+
+// 🗄️ 2. Exportar formato Oracle (CSV + .ctl)
+function exportarOracle() {
+    obtenerDatosParaExportar(function (lista) {
+        var lineas = [];
+        lineas.push('\uFEFF"ID";"TIPO";"DESCRIPCION";"PR";"SELLO";"MARCA";"MODELO";"FECHA_INSTALACION";"UBICACION";"MUNICIPIO"');
+        lista.forEach(function (e) {
+            var fecha = e.fecha_instalacion ? new Date(e.fecha_instalacion).toISOString().slice(0, 10) : '';
+            var row = [
+                '"' + (e.id || '').replace(/"/g, '""') + '"',
+                '"' + (e.tipo || '').replace(/"/g, '""') + '"',
+                '"' + (e.descripcion || '').replace(/"/g, '""') + '"',
+                '"' + (e.pr || '').replace(/"/g, '""') + '"',
+                '"' + (e.sello || '').replace(/"/g, '""') + '"',
+                '"' + (e.marca || '').replace(/"/g, '""') + '"',
+                '"' + (e.modelo || '').replace(/"/g, '""') + '"',
+                '"' + fecha.replace(/"/g, '""') + '"',
+                '"' + (e.ubicacion || '').replace(/"/g, '""') + '"',
+                '"' + (e.municipio || '').replace(/"/g, '""') + '"'
+            ];
+            lineas.push(row.join(';'));
+        });
+        var csv = lineas.join('\n');
+
+        var ctl =
+            '-- ============================================================\n' +
+            '-- Archivo de control para SQL*Loader (Oracle)\n' +
+            '-- Uso: sqlldr usuario/pass@db control=inventario_fisico.ctl\n' +
+            '-- ============================================================\n' +
+            'OPTIONS (SKIP=1, ROWS=1000)\n' +
+            'LOAD DATA\n' +
+            'CHARACTERSET UTF8\n' +
+            "INFILE 'inventario_fisico_rim.dat'\n" +
+            'INTO TABLE INVENTARIO_FISICO_RIM\n' +
+            'FIELDS TERMINATED BY ";" OPTIONALLY ENCLOSED BY \'"\'' + '\n' +
+            'TRAILING NULLCOLS\n' +
+            '(\n' +
+            '  ID,\n' +
+            '  TIPO,\n' +
+            '  DESCRIPCION,\n' +
+            '  PR,\n' +
+            '  SELLO,\n' +
+            '  MARCA,\n' +
+            '  MODELO,\n' +
+            '  FECHA_INSTALACION DATE "YYYY-MM-DD",\n' +
+            '  UBICACION,\n' +
+            '  MUNICIPIO\n' +
+            ')\n' +
+            '\n' +
+            '-- DDL sugerido para crear la tabla en Oracle:\n' +
+            '-- CREATE TABLE INVENTARIO_FISICO_RIM (\n' +
+            '--   ID VARCHAR2(100) PRIMARY KEY,\n' +
+            '--   TIPO VARCHAR2(30),\n' +
+            '--   DESCRIPCION VARCHAR2(200),\n' +
+            '--   PR VARCHAR2(100),\n' +
+            '--   SELLO VARCHAR2(100),\n' +
+            '--   MARCA VARCHAR2(100),\n' +
+            '--   MODELO VARCHAR2(150),\n' +
+            '--   FECHA_INSTALACION DATE,\n' +
+            '--   UBICACION VARCHAR2(300),\n' +
+            '--   MUNICIPIO VARCHAR2(100),\n' +
+            '--   FECHA_CARGA DATE DEFAULT SYSDATE\n' +
+            '-- );\n';
+
+        var fecha = new Date().toISOString().slice(0, 10);
+        descargarArchivo(csv, 'inventario_fisico_rim_' + fecha + '.dat', 'text/csv;charset=utf-8');
+        setTimeout(function () {
+            descargarArchivo(ctl, 'inventario_fisico.ctl', 'text/plain;charset=utf-8');
+        }, 300);
+    });
+}
+
+// 📜 3. Exportar como SQL INSERTs
+function exportarSql() {
+    obtenerDatosParaExportar(function (lista) {
+        var sql = '-- ============================================================\n';
+        sql += '-- Inventario Físico RIM — Generado el ' + new Date().toISOString() + '\n';
+        sql += '-- Solo datos de placa (sin IP, sin estado, sin prioridad)\n';
+        sql += '-- Compatible con Oracle, PostgreSQL, MySQL\n';
+        sql += '-- ============================================================\n\n';
+        sql += '-- DDL sugerido:\n';
+        sql += 'CREATE TABLE INVENTARIO_FISICO_RIM (\n';
+        sql += '  ID VARCHAR2(100) PRIMARY KEY,\n';
+        sql += '  TIPO VARCHAR2(30),\n';
+        sql += '  DESCRIPCION VARCHAR2(200),\n';
+        sql += '  PR VARCHAR2(100),\n';
+        sql += '  SELLO VARCHAR2(100),\n';
+        sql += '  MARCA VARCHAR2(100),\n';
+        sql += '  MODELO VARCHAR2(150),\n';
+        sql += '  FECHA_INSTALACION DATE,\n';
+        sql += '  UBICACION VARCHAR2(300),\n';
+        sql += '  MUNICIPIO VARCHAR2(100),\n';
+        sql += '  FECHA_CARGA DATE DEFAULT SYSDATE\n';
+        sql += ');\n\n';
+        sql += '-- Truncar antes de cargar:\n';
+        sql += 'TRUNCATE TABLE INVENTARIO_FISICO_RIM;\n\n';
+        sql += '-- Datos:\n';
+
+        lista.forEach(function (e) {
+            var fecha = e.fecha_instalacion
+                ? "TO_DATE('" + new Date(e.fecha_instalacion).toISOString().slice(0, 10) + "', 'YYYY-MM-DD')"
+                : 'NULL';
+            var vals = [
+                "'" + (e.id || '').replace(/'/g, "''") + "'",
+                "'" + (e.tipo || '').replace(/'/g, "''") + "'",
+                "'" + (e.descripcion || '').replace(/'/g, "''") + "'",
+                "'" + (e.pr || '').replace(/'/g, "''") + "'",
+                "'" + (e.sello || '').replace(/'/g, "''") + "'",
+                "'" + (e.marca || '').replace(/'/g, "''") + "'",
+                "'" + (e.modelo || '').replace(/'/g, "''") + "'",
+                fecha,
+                "'" + (e.ubicacion || '').replace(/'/g, "''") + "'",
+                "'" + (e.municipio || '').replace(/'/g, "''") + "'",
+                'SYSDATE'
+            ];
+            sql += 'INSERT INTO INVENTARIO_FISICO_RIM (ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION, UBICACION, MUNICIPIO, FECHA_CARGA) VALUES (' + vals.join(', ') + ');\n';
+        });
+
+        sql += '\nCOMMIT;\n';
+
+        var fecha = new Date().toISOString().slice(0, 10);
+        descargarArchivo(sql, 'inventario_fisico_rim_' + fecha + '.sql', 'text/plain;charset=utf-8');
+    });
+}
+
+// ================= ORACLE ASM ================= // 🔧 NUEVO
+function cargarOracleAsm() {
+    fetch('/api/admin/oracle-asm', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
+        var html = '<p style="color:#9fb3c8;font-size:12px;">Umbral de alerta: ' + st.umbral +
+            '% de uso · Última consulta: ' + (st.ultimaEjecucion ? new Date(st.ultimaEjecucion).toLocaleString() : 'nunca') + '</p>';
+        html += '<table><tr><th>Servidor</th><th>DiskGroup</th><th>Total MB</th><th>Libre MB</th><th>% Usado</th><th style="width:30%">Ocupación</th><th>Estado</th></tr>';
+        if (!st.diskgroups || !st.diskgroups.length) html += '<tr><td colspan="7"><div class="vacio">Sin datos. Configura ASM_SERVIDORES en el .env o pulsa Refrescar.</div></td></tr>';
+        for (var i = 0; i < st.diskgroups.length; i++) {
+            var d = st.diskgroups[i];
+            var color = d.pctUsado >= st.umbral ? '#e74c3c' : (d.pctUsado >= st.umbral - 10 ? '#f39c12' : '#21c063');
+            html += '<tr><td>' + esc(d.servidor) + '</td><td><strong>' + esc(d.nombre) + '</strong></td>' +
+                '<td>' + d.totalMB + '</td><td>' + d.libreMB + '</td><td>' + d.pctUsado + '%</td>' +
+                '<td><div class="barra"><div class="relleno" style="width:' + Math.min(100, d.pctUsado) + '%;background:' + color + '"></div></div></td>' +
+                '<td>' + (d.alerta ? '<span class="badge bg-rojo">CRÍTICO</span>' : '<span class="badge bg-verde">OK</span>') + '</td></tr>';
+        }
+        html += '</table>';
+        document.getElementById('tablaAsm').innerHTML = html;
+    }).catch(function () { });
 }
 
 // ================= TERMINAL SSH =================
@@ -543,7 +838,7 @@ function iniciarTerminalSSH(ip, user, pass, nombre, equipoId) {
 
     document.getElementById('btnCerrarTerm').onclick = function () {
         socket.disconnect();
-        try { term.dispose(); } catch (e) {}
+        try { term.dispose(); } catch (e) { }
         caja.style.width = '560px'; caja.style.maxWidth = '92%'; caja.style.height = '';
         cerrarModal();
     };
