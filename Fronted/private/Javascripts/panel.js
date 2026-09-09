@@ -16,7 +16,7 @@ var paginaAuditoria = 1;
 
 // 🔧 Gráficos (instancias para destruir al refrescar)
 var chartTipo = null, chartEstado = null, chartMunicipio = null;
-
+var chartTendencia = null;
 function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
 function abrirModal(t, c) { document.getElementById('modalTitulo').textContent = t; var cu = document.getElementById('modalCuerpo'); cu.style.padding = '20px'; cu.style.overflowY = 'auto'; cu.innerHTML = c; document.getElementById('modal').style.display = 'flex'; }
@@ -43,9 +43,12 @@ document.addEventListener('DOMContentLoaded', function () {
             for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('activa');
             this.classList.add('activa');
             var t = this.getAttribute('data-tab');
-            var secs = ['equipos', 'estadisticas', 'notificaciones', 'avisos', 'usuarios', 'auditoria', 'configs', 'backups', 'oracle']; // 🔧 NUEVO: oracle
-            for (var k = 0; k < secs.length; k++)
-                document.getElementById('tab-' + secs[k]).style.display = (secs[k] === t) ? '' : 'none';
+            var secs = ['equipos', 'estadisticas', 'notificaciones', 'avisos', 'usuarios', 'auditoria', 'configs', 'backups', 'oracle', 'analitica'];
+            for (var k = 0; k < secs.length; k++) {
+                var elSec = document.getElementById('tab-' + secs[k]);
+                if (elSec) elSec.style.display = (secs[k] === t) ? '' : 'none';
+            }
+            if (t === 'analitica') cargarAnalitica();
             if (t === 'equipos') cargarEquipos();
             if (t === 'estadisticas') cargarStats();
             if (t === 'notificaciones') cargarContactos();
@@ -63,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('filtroMunicipio').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroTipo').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroEstado').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
-
+    document.getElementById('btnAplicarAnalitica').addEventListener('click', cargarAnalitica);
     document.getElementById('btnNuevoContacto').addEventListener('click', function () { abrirModalContacto(null); });
     document.getElementById('btnNuevoUsuario').addEventListener('click', function () { abrirModalUsuario(null); });
 
@@ -231,9 +234,9 @@ function abrirModalEditarEquipo(e) {
         '<label>Marca</label><input id="eMarca" value="' + esc(e.marca || '') + '">' +
         '<label>Modelo</label><input id="eModelo" value="' + esc(e.modelo || '') + '">' +
         '<label>Prioridad</label><select id="ePrio">' +
-            '<option value="alta"' + (e.prioridad === 'alta' ? ' selected' : '') + '>alta</option>' +
-            '<option value="media"' + (e.prioridad === 'media' ? ' selected' : '') + '>media</option>' +
-            '<option value="baja"' + ((!e.prioridad || e.prioridad === 'baja') ? ' selected' : '') + '>baja</option></select>' +
+        '<option value="alta"' + (e.prioridad === 'alta' ? ' selected' : '') + '>alta</option>' +
+        '<option value="media"' + (e.prioridad === 'media' ? ' selected' : '') + '>media</option>' +
+        '<option value="baja"' + ((!e.prioridad || e.prioridad === 'baja') ? ' selected' : '') + '>baja</option></select>' +
         '<div style="text-align:center;margin-top:18px;"><button class="btn b-verde" id="btnGuardarEdit">💾 Guardar</button>' +
         '<button class="btn b-gris" id="btnCancelEdit">Cancelar</button></div>');
 
@@ -252,14 +255,14 @@ function abrirModalEditarEquipo(e) {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body), credentials: 'same-origin'
         })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-            if (d.error) { alert('Error: ' + d.error); return; }
-            cerrarModal();
-            cargarEquipos();
-            alert('Equipo actualizado correctamente');
-        })
-        .catch(function () { alert('Error al guardar'); });
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.error) { alert('Error: ' + d.error); return; }
+                cerrarModal();
+                cargarEquipos();
+                alert('Equipo actualizado correctamente');
+            })
+            .catch(function () { alert('Error al guardar'); });
     };
 }
 
@@ -271,14 +274,14 @@ function eliminarEquipoDesdePanel(e) {
     fetch('/api/admin/equipos/' + e.id + '?mun=' + encodeURIComponent(e.municipioId), {
         method: 'DELETE', credentials: 'same-origin'
     })
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-        if (d.error) { alert('Error: ' + d.error); return; }
-        cerrarModal();
-        cargarEquipos();
-        alert('Equipo eliminado correctamente');
-    })
-    .catch(function () { alert('Error al eliminar'); });
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.error) { alert('Error: ' + d.error); return; }
+            cerrarModal();
+            cargarEquipos();
+            alert('Equipo eliminado correctamente');
+        })
+        .catch(function () { alert('Error al eliminar'); });
 }
 
 function abrirWeb(ip, nombre) {
@@ -842,4 +845,96 @@ function iniciarTerminalSSH(ip, user, pass, nombre, equipoId) {
         caja.style.width = '560px'; caja.style.maxWidth = '92%'; caja.style.height = '';
         cerrarModal();
     };
+}
+// ================= ANALÍTICA AVANZADA =================
+var DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+function cargarAnalitica() {
+    var dias = val('selDias') || '30';
+    var gran = val('selGran') || 'dia';
+    fetch('/api/admin/estadisticas-avanzadas?dias=' + dias + '&gran=' + gran, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (st) {
+            renderCardsAnalitica(st);
+            renderTendencia(st.tendencia);
+            renderTop(st.top);
+            renderMttrMun(st.mttrMtbf);
+            renderHeatmap(st.heatmap);
+        }).catch(function () { });
+}
+
+function renderCardsAnalitica(st) {
+    var g = st.mttrMtbf.global;
+    document.getElementById('cardsAnalitica').innerHTML =
+        '<div class="card rojo"><div class="num">' + g.incidentes + '</div><div class="lbl">Incidentes en el rango</div></div>' +
+        '<div class="card naranja"><div class="num">' + g.mttrMin + ' min</div><div class="lbl">MTTR (recuperación)</div></div>' +
+        '<div class="card verde"><div class="num">' + g.mtbfH + ' h</div><div class="lbl">MTBF (entre fallos)</div></div>';
+}
+
+function renderTendencia(t) {
+    if (chartTendencia) { chartTendencia.destroy(); chartTendencia = null; }
+    var colores = ['#3498db', '#21c063', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6', '#16a085', '#c0392b', '#2980b9', '#8e44ad'];
+    var datasets = [{
+        label: 'GLOBAL', data: t.global, borderColor: '#ffffff', backgroundColor: '#ffffff',
+        borderWidth: 3, tension: 0.3, pointRadius: 2
+    }];
+    var i = 0;
+    for (var m in t.porMunicipio) {
+        datasets.push({
+            label: m, data: t.porMunicipio[m], borderColor: colores[i % colores.length],
+            backgroundColor: colores[i % colores.length], borderWidth: 1.5, tension: 0.3,
+            pointRadius: 1, spanGaps: true
+        });
+        i++;
+    }
+    chartTendencia = new Chart(document.getElementById('chartTendencia'), {
+        type: 'line',
+        data: { labels: t.labels, datasets: datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } } },
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+}
+
+function renderTop(top) {
+    var html = '<table><tr><th>#</th><th>Equipo</th><th>Municipio</th><th>Caídas</th></tr>';
+    if (!top.length) html += '<tr><td colspan="4"><div class="vacio">Sin caídas en el rango 🎉</div></td></tr>';
+    for (var i = 0; i < top.length; i++) {
+        html += '<tr><td>' + (i + 1) + '</td><td><strong>' + esc(top[i].nombre) + '</strong></td><td>' + esc(top[i].municipio) + '</td>' +
+            '<td><span class="badge bg-rojo">' + top[i].caidas + '</span></td></tr>';
+    }
+    html += '</table>';
+    document.getElementById('tablaTop').innerHTML = html;
+}
+
+function renderMttrMun(mm) {
+    var html = '<table><tr><th>Municipio</th><th>Incidentes</th><th>MTTR</th><th>MTBF</th></tr>';
+    for (var i = 0; i < mm.porMunicipio.length; i++) {
+        var r = mm.porMunicipio[i];
+        html += '<tr><td>' + esc(r.municipio) + '</td><td>' + r.incidentes + '</td><td>' + r.mttrMin + ' min</td><td>' + r.mtbfH + ' h</td></tr>';
+    }
+    html += '</table>';
+    document.getElementById('tablaMttrMun').innerHTML = html;
+}
+
+function renderHeatmap(hm) {
+    var max = 0;
+    for (var d = 0; d < 7; d++) for (var h = 0; h < 24; h++) if (hm[d][h] > max) max = hm[d][h];
+    var html = '<table style="font-size:11px"><tr><th></th>';
+    for (var h = 0; h < 24; h++) html += '<th style="padding:2px 4px">' + h + '</th>';
+    html += '</tr>';
+    for (var d = 0; d < 7; d++) {
+        html += '<tr><th style="padding:2px 6px">' + DIAS_SEMANA[d] + '</th>';
+        for (var hh = 0; hh < 24; hh++) {
+            var v = hm[d][hh];
+            var intens = max ? Math.round(255 * v / max) : 0;
+            var bg = v === 0 ? '#122238' : 'rgb(' + (100 + intens) + ',' + Math.max(0, 60 - intens / 3) + ',' + Math.max(0, 50 - intens / 3) + ')';
+            html += '<td title="' + DIAS_SEMANA[d] + ' ' + hh + ':00 — ' + v + ' caída(s)" style="background:' + bg + ';width:22px;height:20px;padding:0"></td>';
+        }
+        html += '</tr>';
+    }
+    html += '</table>';
+    document.getElementById('heatmap').innerHTML = html;
 }

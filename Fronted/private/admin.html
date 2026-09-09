@@ -37,10 +37,48 @@
     <button class="tab" data-tab="configs">💾 Configs</button>
     <button class="tab" data-tab="oracle">🗄️ Oracle ASM</button>
     <button class="tab" data-tab="backups">🗄️ Backups BD</button>
+    <button class="tab" data-tab="analitica">📈 Analítica</button>
 
   </div>
 
   <main>
+    <section id="tab-analitica" style="display:none">
+      <div class="toolbar">
+        <h3>📈 Analítica de disponibilidad</h3>
+        <div class="filtros">
+          <select id="selDias">
+            <option value="7">Últimos 7 días</option>
+            <option value="30" selected>Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+          </select>
+          <select id="selGran">
+            <option value="dia" selected>Por día</option>
+            <option value="semana">Por semana</option>
+            <option value="mes">Por mes</option>
+          </select>
+          <button class="btn b-azul" id="btnAplicarAnalitica">Aplicar</button>
+        </div>
+      </div>
+      <div class="cards" id="cardsAnalitica"></div>
+      <div class="chart-box" style="margin-bottom:20px">
+        <h4>📈 Tendencia de disponibilidad (clic en la leyenda para ocultar/mostrar líneas)</h4>
+        <div class="chart-container" style="height:320px"><canvas id="chartTendencia"></canvas></div>
+      </div>
+      <div class="charts">
+        <div class="chart-box">
+          <h4>🏆 Top equipos problemáticos</h4>
+          <div id="tablaTop"></div>
+        </div>
+        <div class="chart-box">
+          <h4>⏱️ MTTR / MTBF por municipio</h4>
+          <div id="tablaMttrMun"></div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h4>🔥 Heatmap de caídas (día × hora)</h4>
+        <div id="heatmap" style="overflow-x:auto"></div>
+      </div>
+    </section>
     <section id="tab-oracle" style="display:none">
       <div class="toolbar">
         <h3>🗄️ Diskgroups ASM (espacio de las BD)</h3>

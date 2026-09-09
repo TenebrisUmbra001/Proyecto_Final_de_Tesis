@@ -1,0 +1,168 @@
+{
+  "switch-1788873068475": {
+    "estado": "offline",
+    "intentos": 6,
+    "reintentoProgramado": true,
+    "ultimo": {
+      "t": 1788959808290,
+      "ok": false,
+      "ms": -1,
+      "detalle": "sin respuesta a ping",
+      "nombre": "dfsgdfsgdfsgdf",
+      "municipio": "Pinar del Río"
+    },
+    "historial": [
+      {
+        "t": 1788958313264,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788958434312,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788958608288,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788958729342,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788958908258,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959029310,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959208264,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959329296,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959508279,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959629327,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959808290,
+        "ok": false,
+        "ms": -1,
+        "detalle": "sin respuesta a ping",
+        "nombre": "dfsgdfsgdfsgdf",
+        "municipio": "Pinar del Río"
+      }
+    ]
+  },
+  "pc-1788896715309": {
+    "estado": "online",
+    "intentos": 0,
+    "reintentoProgramado": false,
+    "ultimo": {
+      "t": 1788959809307,
+      "ok": true,
+      "ms": 1017,
+      "detalle": "ping ok",
+      "nombre": "PC Yohan",
+      "municipio": "Pinar del Río"
+    },
+    "historial": [
+      {
+        "t": 1788958314294,
+        "ok": true,
+        "ms": 1030,
+        "detalle": "ping ok",
+        "nombre": "PC Yohan",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788958609311,
+        "ok": true,
+        "ms": 1023,
+        "detalle": "ping ok",
+        "nombre": "PC Yohan",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788958909273,
+        "ok": true,
+        "ms": 1015,
+        "detalle": "ping ok",
+        "nombre": "PC Yohan",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959209286,
+        "ok": true,
+        "ms": 1020,
+        "detalle": "ping ok",
+        "nombre": "PC Yohan",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959509297,
+        "ok": true,
+        "ms": 1017,
+        "detalle": "ping ok",
+        "nombre": "PC Yohan",
+        "municipio": "Pinar del Río"
+      },
+      {
+        "t": 1788959809307,
+        "ok": true,
+        "ms": 1017,
+        "detalle": "ping ok",
+        "nombre": "PC Yohan",
+        "municipio": "Pinar del Río"
+      }
+    ]
+  }
+}

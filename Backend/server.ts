@@ -10,6 +10,8 @@ import { montarProxySSH } from './sshProxy';
 import { iniciarBackups } from './backupConfigs';
 import { iniciarBackupsBD, ejecutarBackupBD, listarBackupsBD, rutaBackup } from './backupBD';
 import { iniciarOracleAsm, cicloAsm, getEstadoAsm } from './oracleAsm';
+import { calcularTodo } from './estadisticasAvanzadas';
+import { initHistorial, migrarDesdeJSON, purgarHistorial } from './historialBD';
 // BD
 import {
     initDB,
@@ -69,6 +71,7 @@ function requiereRol(...rolesPermitidos: string[]) {
 }
 
 // ---------- Auxiliares para gestión de equipos desde el panel ----------
+
 function buscarObjEnTopo(topo: any, id: string): any {
     let encontrado: any = null;
     const recorrer = (obj: any) => {
@@ -236,7 +239,14 @@ app.delete('/api/admin/usuarios/:id', requiereRol('superadmin'), async (req, res
     await eliminarUsuario(parseInt(req.params.id, 10));
     res.json({ exito: true });
 });
-
+// 📈 Estadísticas avanzadas (tendencia, top, MTTR/MTBF, heatmap)
+app.get('/api/admin/estadisticas-avanzadas', requiereRol('admin', 'superadmin'), async (req, res) => {
+    const dias = parseInt(String(req.query.dias || '30'), 10);
+    const gran = String(req.query.gran || 'dia');
+    const hasta = Date.now();
+    const desde = hasta - dias * 24 * 60 * 60 * 1000;
+    res.json(await calcularTodo(desde, hasta, gran));
+});
 app.get('/api/admin/equipos', requiereRol('admin', 'superadmin'), (req, res) => {
     const estados = getEstados();
     const lista = extraerRecursos().map((r: any) => ({
@@ -249,6 +259,7 @@ app.get('/api/admin/equipos', requiereRol('admin', 'superadmin'), (req, res) => 
 });
 
 // 🏷️ Inventario físico para exportación (solo datos de placa, sin IP/estado)
+// 🏷️ Inventario físico para exportación (todos los equipos, con ubicación calculada)
 app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), async (req, res) => {
     try {
         const municipios = await listarMunicipios();
@@ -258,8 +269,10 @@ app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), asyn
             const topo = await leerTopologiaCompleta(mun.id);
             if (!topo) continue;
 
-            const recorrer = (obj: any) => {
-                if (obj.tipo === 'switch' || obj.tipo === 'modem' || obj.tipo === 'transceiver') {
+            const recorrer = (obj: any, rutaPadres: string) => {
+                if (obj.tipo === 'switch' || obj.tipo === 'modem' || obj.tipo === 'transceiver' ||
+                    obj.tipo === 'pc' || obj.tipo === 'servidor' || obj.tipo === 'firewall' ||
+                    obj.tipo === 'dns' || obj.tipo === 'bd') {
                     inventario.push({
                         id: obj.id,
                         tipo: obj.tipo,
@@ -269,21 +282,27 @@ app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), asyn
                         marca: obj.marca || '',
                         modelo: obj.modelo || '',
                         fecha_instalacion: obj.fecha_instalacion || '',
-                        ubicacion: obj.ubicacion || '',
+                        ubicacion: rutaPadres || obj.ubicacion || '',   // 🔧 ubicación calculada desde la jerarquía
                         municipio: mun.nombre
                     });
                 }
+                // Acumula la ruta para los hijos
+                const nombreActual = obj.descripcion || obj.nombre || '';
+                const rutaHijos = rutaPadres ? rutaPadres + ' > ' + nombreActual : nombreActual;
+
                 const hijos = [
                     ...(obj.edificios || []),
                     ...(obj.locales || []),
                     ...(obj.sublocales || []),
                     ...(obj.equipos || []),
+                    ...(obj.servicios || []),
+                    ...(obj.pcs || []),
                     ...(obj.unidades || [])
                 ];
-                for (const h of hijos) recorrer(h);
+                for (const h of hijos) recorrer(h, rutaHijos);
             };
 
-            for (const u of (topo.unidades || [])) recorrer(u);
+            for (const u of (topo.unidades || [])) recorrer(u, mun.nombre);
         }
         res.json(inventario);
     } catch (e: any) {
@@ -467,12 +486,18 @@ app.use('/private', requiereLogin, express.static(path.join(__dirname, '../Front
 // ============================================================================
 initDB()
     .then(() => migrarUsuariosIniciales())
-    .then(() => cargarTopologiaInicial())     // 🔧 NUEVO: carga todo desde BD antes del monitor
-    .then(() => {
-        iniciarOracleAsm();   // 🔧 nuevo
-        iniciarMonitor();
+    .then(() => initHistorial())
+    .then(() => migrarDesdeJSON(path.join(__dirname, 'db/historial_estados.json')))
+    .then(() => cargarTopologiaInicial())
+    .then(async () => {
+        iniciarOracleAsm();
+        await iniciarMonitor();
         iniciarBackups();
         iniciarBackupsBD();
+        // Purga diaria de eventos de más de 90 días
+        setInterval(() => {
+            purgarHistorial(90).then(n => { if (n) console.log('[HIST-BD] Purgados ' + n + ' eventos viejos'); });
+        }, 24 * 60 * 60 * 1000);
     })
     .catch((e) => console.error('❌ [BD] Error al iniciar la base de datos:', e.message));
 
