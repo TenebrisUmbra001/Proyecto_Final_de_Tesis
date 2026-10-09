@@ -1,7 +1,9 @@
 var STORAGE_KEY = 'rim_topologia';
+// 🔧 Limpieza única de la era pre-BD: la topología ya no vive en el navegador
+try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
 var SVGNS = 'http://www.w3.org/2000/svg';
 var municipioId = localStorage.getItem('rim_municipio_actual');
-var nombreMunicipioActual = localStorage.getItem('rim_municipio_nombre') || '';   // 🔧 NUEVO
+var nombreMunicipioActual = localStorage.getItem('rim_municipio_nombre') || '';
 var datos = null;
 var ruta = [];
 var seleccion = null;
@@ -13,7 +15,6 @@ var modoConexion = false;
 var conexionOrigen = null;
 var conexionSeleccionada = null;
 
-// 🔧 Para auditoría SSH
 var nombreUsuario = '';
 
 var ICONOS = {
@@ -35,7 +36,6 @@ var VEL_MBPS = {
 
 var tiempoAnim = 0;
 
-// ================= PERMISOS POR ROL =================
 var rolUsuario = null;
 
 function puedeEditar() {
@@ -80,7 +80,6 @@ function iniciarAnimacionConexiones() {
     }, 50);
 }
 
-// ================= CARGA / GUARDADO =================
 function cargar() {
     document.getElementById('tituloMunicipio').textContent = 'Cargando...';
 
@@ -97,7 +96,6 @@ function cargar() {
             datos.unidades = datos.unidades || [];
             datos.conexiones = datos.conexiones || [];
 
-            // 🔧 Reparar nombres malos ya guardados en BD (auto-fix al abrir)
             if (nombreMunicipioActual && (!datos.nombre || datos.nombre === 'Nuevo municipio' || datos.nombre === 'Sin nombre')) {
                 datos.nombre = nombreMunicipioActual;
                 guardar();
@@ -105,13 +103,11 @@ function cargar() {
 
             document.getElementById('tituloMunicipio').textContent = 'Información : ' + datos.nombre;
 
-            sincronizarTopologia();
             renderizar();
             iniciarAnimacionConexiones();
             cargarEstados();
             setInterval(cargarEstados, 30000);
 
-            // 🔧 Si venimos del panel con un equipo a enfocar
             var enfocarId = localStorage.getItem('rim_enfocar_equipo');
             if (enfocarId) {
                 localStorage.removeItem('rim_enfocar_equipo');
@@ -127,12 +123,6 @@ function cargar() {
 }
 
 function guardar() {
-    try {
-        var todo = { municipios: {} };
-        todo.municipios[municipioId] = datos;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(todo));
-    } catch (e) { }
-
     fetch('/api/topologia/db/' + encodeURIComponent(municipioId), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -156,7 +146,6 @@ function guardar() {
         });
 }
 
-// ================= MIGRACIÓN de PCs viejas =================
 function migrarPCsAntiguas() {
     var cambios = false;
 
@@ -209,7 +198,6 @@ function migrarPCsAntiguas() {
     if (cambios) guardar();
 }
 
-// ================= UTILIDADES =================
 function esContenedor(tipo) { return tipo === 'unidad' || tipo === 'edificio' || tipo === 'local'; }
 function esEquipo(tipo) { return tipo === 'switch' || tipo === 'modem' || tipo === 'transceiver'; }
 function esServicio(tipo) { return tipo === 'bd' || tipo === 'dns' || tipo === 'firewall' || tipo === 'servidor'; }
@@ -487,7 +475,7 @@ function tamanosPorTipo(tipo) {
     if (tipo === 'pc') return { w: 80, h: 60 };
     return { w: 80, h: 80 };
 }
-// 🔧 Busca un objeto y devuelve también su cadena de contenedores padres
+
 function buscarConPadres(id) {
     var resultado = null;
     function rec(obj, padres) {
@@ -504,7 +492,6 @@ function buscarConPadres(id) {
     return resultado;
 }
 
-// 🔧 Navega hasta el equipo, lo selecciona y lo resalta
 function enfocarEquipo(id) {
     var r = buscarConPadres(id);
     if (!r) return;
@@ -517,6 +504,7 @@ function enfocarEquipo(id) {
         setTimeout(function () { el.style.boxShadow = ''; }, 3000);
     }
 }
+
 function buscarObjPorId(id) {
     function rec(obj) {
         if (obj.id === id) return obj;
@@ -548,6 +536,12 @@ function val(id) {
     return el ? el.value.trim() : '';
 }
 
+function esIpPlaceholder(ip) {
+    if (!ip || !ip.trim()) return true;
+    var t = ip.trim();
+    return t === '1.1.1.1' || t === '0.0.0.0' || t === '255.255.255.255' || t.indexOf('127.') === 0;
+}
+
 function validarIP(ip) {
     var partes = ip.split('.');
     if (partes.length !== 4) return false;
@@ -568,6 +562,8 @@ function mismaSubred(ip1, ip2) {
 }
 
 function ipYaExiste(ip, excluirId) {
+    if (esIpPlaceholder(ip)) return false;
+
     function revisarObj(obj) {
         if (obj.id === excluirId) return false;
         if (obj.ip && obj.ip === ip) return true;
@@ -699,20 +695,11 @@ function maxVelocidadConexiones(obj) {
 }
 
 var estadosRemotos = {};
+var desgloseActual = [];
 
 function estadoDe(id) {
     var e = estadosRemotos[id];
     return e ? e.estado : null;
-}
-
-function sincronizarTopologia() {
-    var raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    fetch('/api/topologia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: raw
-    }).catch(function () { });
 }
 
 function cargarEstados() {
@@ -1171,6 +1158,10 @@ function mostrarFormulario(tipo, padre) {
         html += '</div>';
 
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
+        html += '<label>Modo de monitoreo</label><select id="fMonitoreo">' +
+            '<option value="ping">Ping / SSH (normal)</option>' +
+            '<option value="inferido">Inferido (switch cascada / sin gestión)</option>' +
+            '<option value="ninguno">No monitorear (almacén / inactivo)</option></select>';
     }
     else if (tipo === 'servicio') {
         html += '<label>Tipo de servicio</label><select id="fTipoServ">' +
@@ -1230,13 +1221,16 @@ function mostrarFormulario(tipo, padre) {
                 err.textContent = 'PR, marca y modelo son obligatorios (*).';
                 return;
             }
-            if (tipoFinal === 'switch' && !validarIP(val('fIP'))) {
-                err.textContent = 'IP inválida. Formato esperado: 192.168.1.10';
-                return;
-            }
-            if (tipoFinal === 'switch' && ipYaExiste(val('fIP'), null)) {
-                err.textContent = 'La IP ' + val('fIP') + ' ya está en uso en este municipio.';
-                return;
+            var modoMon = val('fMonitoreo') || 'ping';
+            if (tipoFinal === 'switch' && modoMon !== 'ninguno') {
+                if (!validarIP(val('fIP'))) {
+                    err.textContent = 'IP inválida. Formato esperado: 192.168.1.10';
+                    return;
+                }
+                if (ipYaExiste(val('fIP'), null)) {
+                    err.textContent = 'La IP ' + val('fIP') + ' ya está en uso en este municipio.';
+                    return;
+                }
             }
 
             t = tamanosPorTipo(tipoFinal);
@@ -1272,6 +1266,7 @@ function mostrarFormulario(tipo, padre) {
                 obj.puerto_ethernet_en_uso = 0;
                 obj.usa_adsl = document.getElementById('fAdsl').checked;
             }
+            obj.monitoreo = val('fMonitoreo') || 'ping';
         }
         else if (tipo === 'servicio') {
             var tipoServ = document.getElementById('fTipoServ').value;
@@ -1419,10 +1414,7 @@ function mostrarFormularioConexion(a, b) {
                 err.textContent = 'El puerto ' + puerto + ' ya está ocupado por otra conexión en ' + (otro.descripcion || otro.nombre) + '.';
                 return;
             }
-            if (otro.tipo === 'switch' && !mismaSubred(pc.ip, otro.ip)) {
-                err.textContent = 'La PC (' + pc.ip + ') no está en la misma subred que el switch (' + otro.ip + ').';
-                return;
-            }
+            // 🔧 REMOVIDO: No validamos subred porque las PCs toman gateway del backbone
             if (otro.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[otro.velocidad_enlace || '100 Gbps']) {
                 err.textContent = 'Velocidad ' + vel + ' excede la del switch (' + otro.velocidad_enlace + ').';
                 return;
@@ -1545,6 +1537,12 @@ function mostrarModalEdicion(obj) {
     if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
         html += '<label>Prioridad de alertas</label><select id="ePrioridad">' + opcionesPrioridad(obj.prioridad || 'baja') + '</select>';
     }
+    if (esEquipo(obj.tipo)) {
+        html += '<label>Modo de monitoreo</label><select id="eMonitoreo">' +
+            '<option value="ping"' + ((obj.monitoreo || 'ping') === 'ping' ? ' selected' : '') + '>Ping / SSH (normal)</option>' +
+            '<option value="inferido"' + (obj.monitoreo === 'inferido' ? ' selected' : '') + '>Inferido (switch cascada / sin gestión)</option>' +
+            '<option value="ninguno"' + (obj.monitoreo === 'ninguno' ? ' selected' : '') + '>No monitorear (almacén / inactivo)</option></select>';
+    }
 
     html += '<div style="display:flex;gap:10px;margin-top:20px;">' +
         '<button class="btn-add" id="btnActualizar" style="flex:1;">💾 Actualizar</button>' +
@@ -1579,31 +1577,12 @@ function mostrarModalEdicion(obj) {
         if (eIP) {
             var nIP = eIP.value.trim();
             if (nIP !== (obj.ip || '')) {
-                if (!validarIP(nIP)) { err.textContent = 'IP inválida.'; return; }
-                if (ipYaExiste(nIP, obj.id)) { err.textContent = 'La IP ' + nIP + ' ya está en uso.'; return; }
-                if (obj.tipo === 'switch') {
-                    for (var i = 0; i < datos.conexiones.length; i++) {
-                        var cn = datos.conexiones[i];
-                        if (cn.desde !== obj.id && cn.hasta !== obj.id) continue;
-                        var pid = cn.desde === obj.id ? cn.hasta : cn.desde;
-                        var pobj = buscarObjPorId(pid);
-                        if (pobj && esPC(pobj.tipo) && pobj.ip && !mismaSubred(pobj.ip, nIP)) {
-                            err.textContent = 'La PC "' + (pobj.descripcion || pobj.nombre) + '" (' + pobj.ip + ') quedaría fuera de subred.';
-                            return;
-                        }
-                    }
+                var modoMon = val('eMonitoreo') || obj.monitoreo || 'ping';
+                if (modoMon !== 'ninguno') {
+                    if (!validarIP(nIP)) { err.textContent = 'IP inválida.'; return; }
+                    if (ipYaExiste(nIP, obj.id)) { err.textContent = 'La IP ' + nIP + ' ya está en uso.'; return; }
                 }
-                if (esPC(obj.tipo)) {
-                    var conPC = buscarConexionDe(obj.id, null);
-                    if (conPC) {
-                        var oid = conPC.desde === obj.id ? conPC.hasta : conPC.desde;
-                        var sw = buscarObjPorId(oid);
-                        if (sw && sw.tipo === 'switch' && sw.ip && !mismaSubred(nIP, sw.ip)) {
-                            err.textContent = 'El switch al que está conectada (' + sw.ip + ') está en otra subred.';
-                            return;
-                        }
-                    }
-                }
+                // 🔧 REMOVIDO: No validamos subred porque las PCs toman gateway del backbone
                 cambios.ip = nIP;
             }
         }
@@ -1654,6 +1633,10 @@ function mostrarModalEdicion(obj) {
         var ePrio = document.getElementById('ePrioridad');
         if (ePrio && val('ePrioridad') !== (obj.prioridad || 'baja')) {
             cambios.prioridad = val('ePrioridad');
+        }
+        var eMon = document.getElementById('eMonitoreo');
+        if (eMon && val('eMonitoreo') !== (obj.monitoreo || 'ping')) {
+            cambios.monitoreo = val('eMonitoreo');
         }
 
         var hayCambios = false;
@@ -1897,6 +1880,36 @@ function mostrarPanel(obj) {
     if (esContenedor(obj.tipo)) {
         html += campo('Nombre', 'nombre', obj.nombre || obj.descripcion);
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Doble clic en el elemento para ver su contenido.</p>';
+
+        desgloseActual = recogerEquiposDe(obj, rutaBaseDe());
+        var resumen = {};
+        for (var d = 0; d < desgloseActual.length; d++) {
+            resumen[desgloseActual[d].tipo] = (resumen[desgloseActual[d].tipo] || 0) + 1;
+        }
+        var resumenTxt = [];
+        for (var rt in resumen) resumenTxt.push(resumen[rt] + ' ' + rt);
+
+        html += '<p style="margin-top:8px;"><strong>' + esc(obj.tipo.toUpperCase()) + ': ' + esc(obj.descripcion || obj.nombre) + '</strong></p>';
+        html += '<p><strong>Total equipos: ' + desgloseActual.length + '</strong>' + (resumenTxt.length ? ' (' + resumenTxt.join(' · ') + ')' : '') + '</p>';
+
+        if (desgloseActual.length) {
+            html += '<div style="margin:10px 0;">' +
+                '<button class="btn-add" id="btnExportarDatos" style="padding:6px 12px;font-size:13px;">📥 Exportar datos</button>' +
+                '</div>';
+            html += '<div style="max-height:280px;overflow:auto;border:1px solid #ddd;border-radius:4px;">';
+            html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+            html += '<tr style="background:#0f3460;color:#fff;"><th style="padding:4px;"></th><th style="padding:4px;text-align:left;">Descripción</th><th style="padding:4px;text-align:left;">PR</th></tr>';
+            for (var fi = 0; fi < desgloseActual.length; fi++) {
+                var fe = desgloseActual[fi];
+                html += '<tr class="fila-equipo" data-idx="' + fi + '" style="cursor:pointer;border-bottom:1px solid #eee;">' +
+                    '<td style="padding:4px;">' + (ICONOS[fe.tipo] || '') + '</td>' +
+                    '<td style="padding:4px;">' + esc(fe.descripcion) + '</td>' +
+                    '<td style="padding:4px;">' + esc(fe.pr) + '</td></tr>';
+            }
+            html += '</table></div>';
+            html += '<p style="font-size:11px;color:#555;margin-top:6px;">Haz clic en un equipo para ver sus detalles (solo lectura).</p>';
+        }
+
         if (puedeEditar()) {
             html += '<button class="btn-del" id="btnEliminar">Eliminar</button>';
         }
@@ -1934,6 +1947,16 @@ function mostrarPanel(obj) {
     }
 
     document.getElementById('panel-contenido').innerHTML = html;
+
+    var filasEq = document.querySelectorAll('#panel-contenido .fila-equipo');
+    for (var fe2 = 0; fe2 < filasEq.length; fe2++) {
+        filasEq[fe2].addEventListener('click', function () {
+            var idx = parseInt(this.getAttribute('data-idx'), 10);
+            if (desgloseActual[idx]) abrirModalDetallesEquipo(desgloseActual[idx]);
+        });
+    }
+    var bExp = document.getElementById('btnExportarDatos');
+    if (bExp) bExp.addEventListener('click', abrirModalExportar);
 
     var btnEdit = document.getElementById('btnEditarModal');
     if (btnEdit) btnEdit.addEventListener('click', function () { mostrarModalEdicion(obj); });
@@ -2042,6 +2065,177 @@ function eliminarPorId(id) {
     for (var u = 0; u < datos.unidades.length; u++) {
         if (eliminarRecursivo(datos.unidades[u], id)) return;
     }
+}
+
+function rutaBaseDe() {
+    var partes = [datos.nombre];
+    for (var i = 0; i < ruta.length; i++) partes.push(ruta[i].descripcion || ruta[i].nombre);
+    return partes.join(' > ');
+}
+
+function normalizarEquipo(eq, ubicacion) {
+    return {
+        id: eq.id,
+        tipo: eq.tipo || 'pc',
+        descripcion: eq.descripcion || eq.nombre || '',
+        pr: eq.pr || '',
+        sello: eq.sello || '',
+        marca: eq.marca || '',
+        modelo: eq.modelo || '',
+        fecha_instalacion: eq.fecha_instalacion || '',
+        ubicacion: ubicacion,
+        municipio: datos.nombre,
+        ip: eq.ip || '',
+        tipo_gestion: eq.tipo_gestion || '',
+        gestionable: !!eq.gestionable,
+        velocidad_enlace: eq.velocidad_enlace || '',
+        puertos_fibra: eq.puertos_fibra || 0,
+        puertos_fibra_en_uso: eq.puertos_fibra_en_uso || 0,
+        puertos_ethernet: eq.puertos_ethernet || 0,
+        puertos_ethernet_en_uso: eq.puertos_ethernet_en_uso || 0,
+        puerto_ethernet: eq.puerto_ethernet || 0,
+        puerto_ethernet_en_uso: eq.puerto_ethernet_en_uso || 0,
+        usa_adsl: !!eq.usa_adsl,
+        prioridad: eq.prioridad || 'baja',
+        sistemas_atiende: eq.sistemas_atiende || '',
+        monitoreo: eq.monitoreo || 'ping'
+    };
+}
+
+function recogerEquiposDe(obj, rutaPadres) {
+    var out = [];
+    var nombreObj = obj.descripcion || obj.nombre || '';
+    var rutaActual = rutaPadres ? rutaPadres + ' > ' + nombreObj : nombreObj;
+    (obj.equipos || []).forEach(function (eq) { out.push(normalizarEquipo(eq, rutaActual)); });
+    (obj.servicios || []).forEach(function (sv) { out.push(normalizarEquipo(sv, rutaActual)); });
+    (obj.pcs || []).forEach(function (pc) { out.push(normalizarEquipo(pc, rutaActual)); });
+    (obj.edificios || []).forEach(function (h) { out = out.concat(recogerEquiposDe(h, rutaActual)); });
+    (obj.locales || []).forEach(function (h) { out = out.concat(recogerEquiposDe(h, rutaActual)); });
+    (obj.sublocales || []).forEach(function (h) { out = out.concat(recogerEquiposDe(h, rutaActual)); });
+    return out;
+}
+
+function abrirModalDetallesEquipo(e) {
+    function filaD(k, v) {
+        if (v === null || v === undefined || v === '') return '';
+        return '<div style="display:flex;border-bottom:1px solid #eee;padding:6px 0;">' +
+            '<span style="width:40%;color:#555;font-size:12px;">' + k + '</span>' +
+            '<span style="width:60%;font-size:13px;font-weight:600;">' + esc(String(v)) + '</span></div>';
+    }
+    var html = '<p style="font-size:11px;color:#555;">👁️ Vista de solo lectura (todos los roles).</p>';
+    html += filaD('Tipo', e.tipo);
+    html += filaD('Descripción', e.descripcion);
+    html += filaD('PR / Código', e.pr);
+    html += filaD('Sello', e.sello);
+    html += filaD('Marca', e.marca);
+    html += filaD('Modelo', e.modelo);
+    html += filaD('Fecha instalación', e.fecha_instalacion ? String(e.fecha_instalacion).slice(0, 10) : '');
+    html += filaD('Ubicación', e.ubicacion);
+    html += filaD('Municipio', e.municipio);
+    html += filaD('IP', e.ip);
+    if (e.tipo === 'switch') {
+        html += filaD('Tipo de gestión', e.tipo_gestion);
+        html += filaD('Gestionable', e.gestionable ? 'Sí' : 'No');
+        html += filaD('Velocidad de enlace', e.velocidad_enlace);
+        html += filaD('Puertos fibra', (e.puertos_fibra_en_uso || 0) + ' / ' + (e.puertos_fibra || 0) + ' en uso');
+        html += filaD('Puertos ethernet', (e.puertos_ethernet_en_uso || 0) + ' / ' + (e.puertos_ethernet || 0) + ' en uso');
+    }
+    if (e.tipo === 'modem') {
+        html += filaD('Puertos ethernet', (e.puerto_ethernet_en_uso || 0) + ' / ' + (e.puerto_ethernet || 0) + ' en uso');
+        html += filaD('Usa ADSL', e.usa_adsl ? 'Sí' : 'No');
+    }
+    if (e.tipo === 'pc') {
+        html += filaD('Sistemas que atiende', e.sistemas_atiende);
+    }
+    html += filaD('Prioridad de alertas', e.prioridad);
+    html += filaD('Modo de monitoreo', e.monitoreo);
+    html += '<div style="text-align:center;margin-top:16px;"><button class="btn-del" id="btnCerrarDet" style="background:#555;">Cerrar</button></div>';
+    abrirModal('👁️ Detalles: ' + esc(e.descripcion), html);
+    document.getElementById('btnCerrarDet').addEventListener('click', cerrarModal);
+}
+
+function descargarArchivoTopo(contenido, nombre, mime) {
+    var blob = new Blob([contenido], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+function exportarDesglose(fmt) {
+    var lista = desgloseActual;
+    if (!lista.length) { alert('No hay equipos para exportar en este contenedor.'); return; }
+    var fecha = new Date().toISOString().slice(0, 10);
+    var base = 'inventario_' + (datos.nombre || 'municipio').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + fecha;
+
+    if (fmt === 'xlsx') {
+        var filas = lista.map(function (e) {
+            return {
+                'ID': e.id, 'Tipo': e.tipo, 'Descripción': e.descripcion, 'PR / Código': e.pr,
+                'Sello': e.sello, 'Marca': e.marca, 'Modelo': e.modelo,
+                'Fecha instalación': e.fecha_instalacion ? String(e.fecha_instalacion).slice(0, 10) : '',
+                'Ubicación': e.ubicacion, 'Municipio': e.municipio, 'IP': e.ip
+            };
+        });
+        var ws = XLSX.utils.json_to_sheet(filas);
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+        XLSX.writeFile(wb, base + '.xlsx');
+        return;
+    }
+
+    if (fmt === 'oracle') {
+        var lineas = ['\uFEFF"ID";"TIPO";"DESCRIPCION";"PR";"SELLO";"MARCA";"MODELO";"FECHA_INSTALACION";"UBICACION";"MUNICIPIO"'];
+        lista.forEach(function (e) {
+            var f = e.fecha_instalacion ? String(e.fecha_instalacion).slice(0, 10) : '';
+            var row = [e.id, e.tipo, e.descripcion, e.pr, e.sello, e.marca, e.modelo, f, e.ubicacion, e.municipio]
+                .map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; });
+            lineas.push(row.join(';'));
+        });
+        descargarArchivoTopo(lineas.join('\n'), base + '.dat', 'text/csv;charset=utf-8');
+        var ctl = '-- Archivo de control SQL*Loader (fragmento de topología)\nOPTIONS (SKIP=1, ROWS=1000)\nLOAD DATA\nCHARACTERSET UTF8\nINFILE \'' + base + '.dat\'\nINTO TABLE INVENTARIO_FISICO_RIM\nFIELDS TERMINATED BY ";" OPTIONALLY ENCLOSED BY \'"\'\nTRAILING NULLCOLS\n(\n  ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION DATE "YYYY-MM-DD", UBICACION, MUNICIPIO\n)\n';
+        setTimeout(function () { descargarArchivoTopo(ctl, 'inventario_fragmento.ctl', 'text/plain;charset=utf-8'); }, 300);
+        return;
+    }
+
+    if (fmt === 'sql') {
+        var sql = '-- Inventario de contenedor — generado ' + new Date().toISOString() + '\n';
+        lista.forEach(function (e) {
+            var f = e.fecha_instalacion ? "TO_DATE('" + String(e.fecha_instalacion).slice(0, 10) + "', 'YYYY-MM-DD')" : 'NULL';
+            function q(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "''") + "'"; }
+            sql += 'INSERT INTO INVENTARIO_FISICO_RIM (ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION, UBICACION, MUNICIPIO, FECHA_CARGA) VALUES (' +
+                q(e.id) + ', ' + q(e.tipo) + ', ' + q(e.descripcion) + ', ' + q(e.pr) + ', ' + q(e.sello) + ', ' + q(e.marca) + ', ' + q(e.modelo) + ', ' + f + ', ' + q(e.ubicacion) + ', ' + q(e.municipio) + ', SYSDATE);\n';
+        });
+        sql += '\nCOMMIT;\n';
+        descargarArchivoTopo(sql, base + '.sql', 'text/plain;charset=utf-8');
+    }
+}
+
+function abrirModalExportar() {
+    var html = '<p style="margin-bottom:15px;color:#555;">Elige el formato para exportar <strong>' + desgloseActual.length + ' equipo(s)</strong> de este contenedor:</p>';
+    html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+    html += '<button class="btn-add" id="optXlsx" style="padding:12px;text-align:left;">📥 <strong>Excel (.xlsx)</strong><br><span style="font-size:11px;color:#666;">Para análisis en Excel, LibreOffice, Google Sheets</span></button>';
+    html += '<button class="btn-add" id="optOracle" style="padding:12px;text-align:left;">🗄️ <strong>Oracle SQL*Loader (.dat + .ctl)</strong><br><span style="font-size:11px;color:#666;">Para importar a Oracle con SQL*Loader</span></button>';
+    html += '<button class="btn-add" id="optSql" style="padding:12px;text-align:left;">📜 <strong>SQL (.sql)</strong><br><span style="font-size:11px;color:#666;">Script INSERT para PostgreSQL, Oracle, MySQL</span></button>';
+    html += '</div>';
+    html += '<button class="btn-del" id="btnCerrarExp" style="margin-top:15px;background:#555;width:100%;">Cancelar</button>';
+
+    abrirModal('📥 Exportar datos del contenedor', html);
+
+    document.getElementById('optXlsx').addEventListener('click', function () {
+        cerrarModal();
+        exportarDesglose('xlsx');
+    });
+    document.getElementById('optOracle').addEventListener('click', function () {
+        cerrarModal();
+        exportarDesglose('oracle');
+    });
+    document.getElementById('optSql').addEventListener('click', function () {
+        cerrarModal();
+        exportarDesglose('sql');
+    });
+    document.getElementById('btnCerrarExp').addEventListener('click', cerrarModal);
 }
 
 function iniciar() {

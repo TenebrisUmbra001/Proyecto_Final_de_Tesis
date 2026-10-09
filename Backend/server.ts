@@ -185,8 +185,18 @@ app.post('/api/cambiar-password', requiereLogin, async (req, res) => {
 // ============================================================================
 // 🖧 API: Monitor
 // ============================================================================
+// 🔧 Endpoint legacy defensivo: hace merge por municipio en lugar de reemplazar todo
 app.post('/api/topologia', requiereLogin, (req, res) => {
-    setTopologia(req.body);
+    const body = req.body || {};
+    if (body.municipios && typeof body.municipios === 'object') {
+        // Merge por municipio: nunca pisa los que no vienen en el payload
+        for (const munId of Object.keys(body.municipios)) {
+            if (body.municipios[munId]) {
+                setTopologiaMunicipio(munId, body.municipios[munId]);
+            }
+        }
+    }
+    // Si no trae estructura de municipios, no hace nada (defensivo)
     res.json({ exito: true });
 });
 
@@ -258,8 +268,7 @@ app.get('/api/admin/equipos', requiereRol('admin', 'superadmin'), (req, res) => 
     res.json(lista);
 });
 
-// 🏷️ Inventario físico para exportación (solo datos de placa, sin IP/estado)
-// 🏷️ Inventario físico para exportación (todos los equipos, con ubicación calculada)
+
 app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), async (req, res) => {
     try {
         const municipios = await listarMunicipios();
@@ -282,11 +291,10 @@ app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), asyn
                         marca: obj.marca || '',
                         modelo: obj.modelo || '',
                         fecha_instalacion: obj.fecha_instalacion || '',
-                        ubicacion: rutaPadres || obj.ubicacion || '',   // 🔧 ubicación calculada desde la jerarquía
+                        ubicacion: rutaPadres || obj.ubicacion || '',
                         municipio: mun.nombre
                     });
                 }
-                // Acumula la ruta para los hijos
                 const nombreActual = obj.descripcion || obj.nombre || '';
                 const rutaHijos = rutaPadres ? rutaPadres + ' > ' + nombreActual : nombreActual;
 
@@ -331,7 +339,7 @@ app.put('/api/admin/equipos/:id', requiereRol('admin', 'superadmin'), async (req
         if (c.ubicacion !== undefined) eq.ubicacion = c.ubicacion;
 
         await guardarTopologiaCompleta(munId, topo.nombre, topo);
-        setTopologiaMunicipio(munId, topo);   // 🔧 merge, no pisa los demás
+        setTopologiaMunicipio(munId, topo);
         res.json({ exito: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -359,7 +367,7 @@ app.delete('/api/admin/equipos/:id', requiereRol('superadmin'), async (req, res)
         if (!eliminarEquipoDeTopo(topo, id)) return res.status(404).json({ error: 'Equipo no encontrado' });
 
         await guardarTopologiaCompleta(munId, topo.nombre, topo);
-        setTopologiaMunicipio(munId, topo);   // 🔧 merge, no pisa los demás
+        setTopologiaMunicipio(munId, topo);
         res.json({ exito: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -370,7 +378,7 @@ app.get('/api/admin/estadisticas', requiereRol('admin', 'superadmin'), (req, res
     const st: any = {
         total: recursos.length,
         porTipo: {},
-        porEstado: { online: 0, offline: 0, degradado: 0, desconocido: 0 },
+        porEstado: { online: 0, offline: 0, degradado: 0, desconocido: 0, excluido: 0 },   // 🔧 NUEVO: excluido
         porMunicipio: {},
         eventosOk: 0, eventosTotal: 0
     };
@@ -471,7 +479,7 @@ app.get('/api/topologia/db/:id', requiereLogin, async (req, res) => {
 app.put('/api/topologia/db/:id', requiereLogin, async (req, res) => {
     try {
         await guardarTopologiaCompleta(req.params.id, req.body.nombre || 'Sin nombre', req.body);
-        setTopologiaMunicipio(req.params.id, req.body);   // 🔧 merge, no pisa los demás
+        setTopologiaMunicipio(req.params.id, req.body);
         res.json({ exito: true });
     } catch (e: any) {
         console.error('Error guardando topología:', e);

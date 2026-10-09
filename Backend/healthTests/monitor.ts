@@ -15,11 +15,12 @@ export interface RecursoMonitoreo {
     prioridad: string;
     gestionable?: boolean;
     puerto?: number;
+    monitoreo?: string;   // 🔧 NUEVO: 'ping' | 'inferido' | 'ninguno'
     pcs?: { id: string; ip: string }[];
 }
 
 interface Estado {
-    estado: 'online' | 'offline' | 'degradado' | 'desconocido';
+    estado: 'online' | 'offline' | 'degradado' | 'desconocido' | 'excluido';   // 🔧 NUEVO: 'excluido'
     intentos: number;
     reintentoProgramado: boolean;
     ultimo: { t: number; ok: boolean; ms: number; detalle: string } | null;
@@ -28,12 +29,19 @@ interface Estado {
 
 let topologia: any = null;
 const estados: Record<string, Estado> = {};
-let bufferEventos: any[] = [];   // 🔧 cola hacia la BD
+let bufferEventos: any[] = [];
 
 const INTERVALO_NORMAL = parseInt(process.env.MONITOR_INTERVALO_MIN || '5', 10) * 60 * 1000;
 const INTERVALO_REINTENTO = parseInt(process.env.MONITOR_REINTENTO_MIN || '2', 10) * 60 * 1000;
 const TOPO_FILE = path.join(__dirname, '../db/topologia_sync.json');
 const PUERTOS_SERVICIO: Record<string, number> = { bd: 1521, dns: 53, firewall: 443, servidor: 22 };
+
+// 🔧 NUEVO: IPs que no deben chequearse (placeholder / inválidas)
+function esIpPlaceholder(ip: string): boolean {
+    if (!ip || !ip.trim()) return true;
+    const t = ip.trim();
+    return t === '1.1.1.1' || t === '0.0.0.0' || t === '255.255.255.255' || t.startsWith('127.');
+}
 
 export function setTopologia(t: any) {
     topologia = t;
@@ -52,7 +60,6 @@ export function setTopologiaMunicipio(munId: string, datos: any) {
 export function getEstados() { return estados; }
 export function getTopologia() { return topologia; }
 
-// 🔧 Vuelca el buffer a la BD periódicamente
 async function flushBuffer() {
     if (!bufferEventos.length) return;
     const lote = bufferEventos;
@@ -93,8 +100,17 @@ export function extraerRecursos(): RecursoMonitoreo[] {
         }
         const recLocal = (loc: any) => {
             for (const eq of (loc.equipos || [])) {
-                if (!eq.ip) continue;
-                lista.push({ id: eq.id, tipo: eq.tipo, nombre: eq.descripcion || eq.nombre || '', ip: eq.ip, municipio: mun.nombre, municipioId: munId, prioridad: eq.prioridad || 'media', gestionable: !!eq.gestionable, pcs: pcsDeSwitch[eq.id] || [] });
+                // 🔧 NUEVO: calcular modo efectivo de monitoreo
+                const modo = eq.monitoreo || 'ping';
+                let efectivo = modo;
+                if (esIpPlaceholder(eq.ip) && modo !== 'inferido') efectivo = 'ninguno';
+                lista.push({
+                    id: eq.id, tipo: eq.tipo, nombre: eq.descripcion || eq.nombre || '',
+                    ip: eq.ip, municipio: mun.nombre, municipioId: munId,
+                    prioridad: eq.prioridad || 'media', gestionable: !!eq.gestionable,
+                    monitoreo: efectivo,   // 🔧 NUEVO
+                    pcs: pcsDeSwitch[eq.id] || []
+                });
             }
             for (const sv of (loc.servicios || [])) {
                 if (!sv.ip) continue;
@@ -137,7 +153,6 @@ async function evaluarRecurso(r: RecursoMonitoreo): Promise<{ ok: boolean; detal
     return t ? { ok: true, detalle: 'puerto ' + (r.puerto || 22) + ' abierto', ms: 0 } : { ok: false, detalle: 'puerto ' + (r.puerto || 22) + ' cerrado', ms: -1 };
 }
 
-// 🔧 Ahora registra en memoria (para el dashboard) Y en el buffer hacia la BD
 function registrar(id: string, res: { ok: boolean; detalle: string; ms: number }, r?: RecursoMonitoreo) {
     const est = estados[id] || (estados[id] = { estado: 'desconocido', intentos: 0, reintentoProgramado: false, ultimo: null, historial: [] });
     const ev = { t: Date.now(), ok: res.ok, ms: res.ms, detalle: res.detalle };
@@ -169,21 +184,86 @@ async function evaluarConReintento(r: RecursoMonitoreo) {
     }
 }
 
-async function ciclo() {
-    const recursos = extraerRecursos();
-    console.log(`[MONITOR] Ciclo de chequeo: ${recursos.length} recursos`);
-    for (const r of recursos) {
-        try { await evaluarConReintento(r); } catch (e) { console.error('Error evaluando ' + r.id, e); }
+// 🔧 NUEVO: Construye grafo de adyacencia desde conexiones
+function construirAdyacencia(): Record<string, string[]> {
+    const ady: Record<string, string[]> = {};
+    if (!topologia || !topologia.municipios) return ady;
+    for (const munId of Object.keys(topologia.municipios)) {
+        for (const con of (topologia.municipios[munId].conexiones || [])) {
+            (ady[con.desde] = ady[con.desde] || []).push(con.hasta);
+            (ady[con.hasta] = ady[con.hasta] || []).push(con.desde);
+        }
+    }
+    return ady;
+}
+
+// 🔧 NUEVO: Deduce estado de switches inferidos por sus vecinos
+function aplicarInferencia(recursos: RecursoMonitoreo[], ady: Record<string, string[]>) {
+    const pendientes = recursos.filter(r =>
+        r.monitoreo === 'inferido' ||
+        (!r.gestionable && r.monitoreo === 'ping' && estados[r.id] && estados[r.id].estado === 'desconocido'));
+
+    for (let pasada = 0; pasada < 3; pasada++) {
+        for (const r of pendientes) {
+            const vec = ady[r.id] || [];
+            let hayOnline = false, hayConcreto = false, todosOffline = true;
+            for (const v of vec) {
+                const st = estados[v] ? estados[v].estado : null;
+                if (!st || st === 'desconocido' || st === 'excluido') continue;
+                hayConcreto = true;
+                if (st === 'online' || st === 'degradado') { hayOnline = true; todosOffline = false; }
+                else if (st !== 'offline') { todosOffline = false; }
+            }
+                        let nuevo: 'online' | 'offline' | null = null;
+            if (hayOnline) nuevo = 'online';
+            else if (hayConcreto && todosOffline) nuevo = 'offline';
+            if (nuevo) {
+                const est = estados[r.id] || (estados[r.id] = { estado: 'desconocido', intentos: 0, reintentoProgramado: false, ultimo: null, historial: [] });
+                if (est.estado !== nuevo) {
+                    est.estado = nuevo;
+                    if (nuevo === 'offline') notificarSegunPrioridad(r, 'Caída inferida: ningún equipo conectado detrás responde');
+                }
+            }
+        }
     }
 }
 
+// 🔧 NUEVO: Ciclo con soporte para excluidos e inferencia
+async function ciclo() {
+    const recursos = extraerRecursos();
+    const ady = construirAdyacencia();
+    console.log(`[MONITOR] Ciclo de chequeo: ${recursos.length} recursos`);
+
+    for (const r of recursos) {
+        try {
+            // 🔧 Excluidos: no se chequean, nunca salen como caídos
+            if (r.monitoreo === 'ninguno') {
+                estados[r.id] = estados[r.id] || { estado: 'excluido', intentos: 0, reintentoProgramado: false, ultimo: null, historial: [] };
+                estados[r.id].estado = 'excluido';
+                continue;
+            }
+            // 🔧 Inferidos puros: no se pinguean, se resuelven por vecinos
+            if (r.monitoreo === 'inferido') continue;
+
+            if (r.gestionable) {
+                await evaluarConReintento(r);
+            } else {
+                // No gestionable: ping informativo; si falla se infiere, no se declara caído directo
+                const res = await evaluarRecurso(r);
+                const est = registrar(r.id, res, r);
+                if (res.ok) { est.estado = res.degradado ? 'degradado' : 'online'; est.intentos = 0; }
+                else { est.estado = 'desconocido'; }
+            }
+        } catch (e) { console.error('Error evaluando ' + r.id, e); }
+    }
+    aplicarInferencia(recursos, ady);
+}
+
 export async function iniciarMonitor() {
-    // 🔧 Recuperar topología persistida
     try {
         if (fs.existsSync(TOPO_FILE)) { topologia = JSON.parse(fs.readFileSync(TOPO_FILE, 'utf8')); console.log('[MONITOR] Topología recuperada desde disco'); }
     } catch (e) { console.error('[MONITOR] No se pudo leer topología:', e); }
 
-    // 🔧 Recuperar últimos estados desde la BD (el mapa no queda gris al reiniciar)
     try {
         const ultimos = await obtenerUltimosEstados();
         for (const u of ultimos) {
@@ -197,7 +277,7 @@ export async function iniciarMonitor() {
         console.log('[MONITOR] Estados previos cargados desde BD: ' + ultimos.length);
     } catch (e) { console.error('[MONITOR] No se pudo cargar estados desde BD:', e); }
 
-    setInterval(flushBuffer, 30000);          // 🔧 vuelca a BD cada 30s
+    setInterval(flushBuffer, 30000);
     setTimeout(ciclo, 5000);
     setInterval(ciclo, INTERVALO_NORMAL);
     console.log('[MONITOR] Iniciado: ciclo ' + (INTERVALO_NORMAL / 60000) + ' min, reintento ' + (INTERVALO_REINTENTO / 60000) + ' min');

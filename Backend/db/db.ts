@@ -1,12 +1,17 @@
-import { Pool } from 'pg';
+import * as fs from 'fs';
 
-// 🔧 Cast a any: evita choques de tipos entre versiones de @types/pg
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { Pool, types } = require('pg');
+
+types.setTypeParser(20, (val: any) => parseInt(val, 10));
+
 const pool: any = new Pool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     user: process.env.DB_USER || 'rim',
     password: process.env.DB_PASS || 'rim123',
-    database: process.env.DB_NAME || 'rim'
+    database: process.env.DB_NAME || 'rim',
+    max: 10
 });
 
 
@@ -92,10 +97,11 @@ CREATE TABLE IF NOT EXISTS configs_switch (
 
 export async function initDB() {
     await pool.query(ESQUEMA);
+    // 🔧 NUEVO: Agregar columna monitoreo si no existe (no destructivo)
+    await pool.query(`ALTER TABLE equipos ADD COLUMN IF NOT EXISTS monitoreo VARCHAR(10) DEFAULT 'ping'`);
     console.log('✅ [BD] Esquema PostgreSQL listo');
 }
 
-// ---------- CONTACTOS ----------
 export async function getContactos() {
     const r = await pool.query('SELECT * FROM contactos_notificacion ORDER BY nombre');
     return r.rows;
@@ -128,7 +134,6 @@ export async function eliminarContacto(id: number) {
     await pool.query('DELETE FROM contactos_notificacion WHERE id=$1', [id]);
 }
 
-// ---------- AVISOS ----------
 export async function registrarAviso(recurso: any, canal: string, destinatario: string, detalle: string, prio: string) {
     await pool.query(
         `INSERT INTO avisos_enviados (recurso_id, recurso_nombre, canal, destinatario, detalle, prioridad)
@@ -141,7 +146,6 @@ export async function getAvisos() {
     return r.rows;
 }
 
-// ---------- AUDITORÍA SSH ----------
 export async function registrarSSHInicio(usuarioSistema: string, usuarioSsh: string, equipoId: string, ip: string) {
     const r = await pool.query(
         `INSERT INTO auditoria_ssh (usuario_sistema, usuario_ssh, equipo_id, equipo_ip, inicio)
@@ -158,7 +162,6 @@ export async function getAuditoria() {
     return r.rows;
 }
 
-// ---------- USUARIOS ----------
 import bcrypt from 'bcrypt';
 
 export async function getUsuarios() {
@@ -218,7 +221,6 @@ export async function cambiarPasswordUsuario(id: number, passActual: string, pas
     return null;
 }
 
-// Migrar usuarios por defecto la primera vez (si la tabla está vacía)
 export async function migrarUsuariosIniciales() {
     const r = await pool.query('SELECT COUNT(*) FROM usuarios');
     if (parseInt(r.rows[0].count, 10) > 0) return;
@@ -231,9 +233,6 @@ export async function migrarUsuariosIniciales() {
     console.log('✅ [BD] Usuarios iniciales creados');
 }
 
-// ============================================================
-// 🗺️ TOPOLOGÍA - Lectura completa de un municipio
-// ============================================================
 export async function leerTopologiaCompleta(municipioId: string) {
     const cliente = await pool.connect();
     try {
@@ -321,6 +320,7 @@ function reconstruirLocal(l: any, todosLocales: any[], equipos: any[], servicios
             puertos_ethernet: eq.puertos_ethernet, puertos_ethernet_en_uso: eq.puertos_ethernet_en_uso,
             puerto_ethernet: eq.puerto_ethernet, puerto_ethernet_en_uso: eq.puerto_ethernet_en_uso,
             usa_adsl: eq.usa_adsl, prioridad: eq.prioridad,
+            monitoreo: eq.monitoreo || 'ping',   // 🔧 NUEVO
             x: eq.x, y: eq.y, width: eq.width, height: eq.height
         })),
         servicios: servicios.filter(s => s.local_id === l.id).map(s => ({
@@ -336,9 +336,6 @@ function reconstruirLocal(l: any, todosLocales: any[], equipos: any[], servicios
     };
 }
 
-// ============================================================
-// 🗺️ TOPOLOGÍA - Guardado completo (reemplaza todo el municipio)
-// ============================================================
 export async function guardarTopologiaCompleta(municipioId: string, municipioNombre: string, datos: any) {
     const cliente = await pool.connect();
     try {
@@ -366,6 +363,40 @@ export async function guardarTopologiaCompleta(municipioId: string, municipioNom
                     await insertarLocalRecursivo(cliente, local, edificio.id, null);
                 }
             }
+        }
+
+        const todasUnidades = (await cliente.query('SELECT id FROM unidades WHERE municipio_id = $1', [municipioId])).rows;
+        const todosEdificios = todasUnidades.length ? (await cliente.query(
+            'SELECT id FROM edificios WHERE unidad_id = ANY($1)', [todasUnidades.map((u: any) => u.id)]
+        )).rows : [];
+        const todosLocales = todosEdificios.length ? (await cliente.query(
+            'SELECT id FROM locales WHERE edificio_id = ANY($1) OR padre_local_id IN (SELECT id FROM locales WHERE edificio_id = ANY($1))',
+            [todosEdificios.map((e: any) => e.id)]
+        )).rows : [];
+        const todosEquipos = todosLocales.length ? (await cliente.query(
+            'SELECT id FROM equipos WHERE local_id = ANY($1)', [todosLocales.map((l: any) => l.id)]
+        )).rows : [];
+        const todosServicios = todosLocales.length ? (await cliente.query(
+            'SELECT id FROM servicios WHERE local_id = ANY($1)', [todosLocales.map((l: any) => l.id)]
+        )).rows : [];
+        const todosPcs = todosLocales.length ? (await cliente.query(
+            'SELECT id FROM pcs WHERE local_id = ANY($1)', [todosLocales.map((l: any) => l.id)]
+        )).rows : [];
+
+        const todosIds = [
+            ...todasUnidades.map((u: any) => u.id),
+            ...todosEdificios.map((e: any) => e.id),
+            ...todosLocales.map((l: any) => l.id),
+            ...todosEquipos.map((e: any) => e.id),
+            ...todosServicios.map((s: any) => s.id),
+            ...todosPcs.map((p: any) => p.id)
+        ];
+
+        if (todosIds.length > 0) {
+            await cliente.query(
+                'DELETE FROM conexiones WHERE desde_id = ANY($1) OR hasta_id = ANY($1)',
+                [todosIds]
+            );
         }
 
         for (const con of (datos.conexiones || [])) {
@@ -396,13 +427,13 @@ async function insertarLocalRecursivo(cliente: any, local: any, edificioId: stri
             `INSERT INTO equipos (id, local_id, tipo, descripcion, pr, sello, marca, modelo, fecha_instalacion, ubicacion,
                 ip, tipo_gestion, gestionable, velocidad_enlace,
                 puertos_fibra, puertos_fibra_en_uso, puertos_ethernet, puertos_ethernet_en_uso,
-                puerto_ethernet, puerto_ethernet_en_uso, usa_adsl, prioridad, x, y, width, height)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
+                puerto_ethernet, puerto_ethernet_en_uso, usa_adsl, prioridad, x, y, width, height, monitoreo)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
             [eq.id, local.id, eq.tipo, eq.descripcion || eq.nombre, eq.pr, eq.sello, eq.marca, eq.modelo,
             eq.fecha_instalacion, eq.ubicacion, eq.ip, eq.tipo_gestion, eq.gestionable, eq.velocidad_enlace,
             eq.puertos_fibra, eq.puertos_fibra_en_uso, eq.puertos_ethernet, eq.puertos_ethernet_en_uso,
             eq.puerto_ethernet, eq.puerto_ethernet_en_uso, eq.usa_adsl, eq.prioridad || 'baja',
-            eq.x, eq.y, eq.width, eq.height]);
+            eq.x, eq.y, eq.width, eq.height, eq.monitoreo || 'ping']);   // 🔧 NUEVO
     }
 
     for (const s of (local.servicios || [])) {
@@ -429,9 +460,6 @@ export async function listarMunicipios() {
     return r.rows;
 }
 
-// ============================================================
-// 💾 CONFIGS DE SWITCHES - Backup semanal
-// ============================================================
 export async function guardarConfigSwitch(equipoId: string, nombre: string, ip: string, config: string) {
     await pool.query('INSERT INTO configs_switch (equipo_id, equipo_nombre, ip, configuracion) VALUES ($1,$2,$3,$4)',
         [equipoId, nombre, ip, config]);
