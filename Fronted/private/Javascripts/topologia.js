@@ -931,6 +931,8 @@ function puntoBorde(rep, cx, cy, tx, ty) {
 
 function calcularIndiceConexion(conId, repAId, repBId) {
     var claves = [];
+    
+    // Conexiones locales
     for (var i = 0; i < datos.conexiones.length; i++) {
         var c = datos.conexiones[i];
         var rA = representanteVisible(c.desde);
@@ -943,6 +945,20 @@ function calcularIndiceConexion(conId, repAId, repBId) {
             claves.push(c.id);
         }
     }
+    
+    // 🔧 NUEVO: También considera conexiones globales
+    if (window.conexionesGlobalesActivas) {
+        for (var j = 0; j < window.conexionesGlobalesActivas.length; j++) {
+            var cg = window.conexionesGlobalesActivas[j];
+            // Simplificación: si conecta los mismos municipios
+            if ((cg.desde_municipio_id === repAId && cg.hasta_municipio_id === repBId) ||
+                (cg.hasta_municipio_id === repAId && cg.desde_municipio_id === repBId)) {
+                if (cg.id === conId) return claves.length;
+                claves.push(cg.id);
+            }
+        }
+    }
+    
     return 0;
 }
 
@@ -1120,6 +1136,63 @@ function dibujarConexiones() {
             }
         })(datos.conexiones[i]);
     }
+    // 🔧 NUEVO: Dibujar conexiones globales desde/ hacia este municipio
+function dibujarConexionesGlobalesEnTopologia() {
+    fetch('/api/topologia/conexiones-globales', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (globales) {
+            window.conexionesGlobalesActivas = globales;
+            var svg = document.getElementById('capa-conexiones');
+            if (!svg) return;
+            
+            for (var i = 0; i < globales.length; i++) {
+                var cg = globales[i];
+                // Verificar si esta conexión involucra a este municipio
+                var esDesdeAqui = cg.desde_municipio_id === municipioId;
+                var esHastaAqui = cg.hasta_municipio_id === municipioId;
+                
+                if (!esDesdeAqui && !esHastaAqui) continue;
+                
+                // Buscar el equipo local
+                var equipoLocalId = esDesdeAqui ? cg.desde_id : cg.hasta_id;
+                var equipoRemotoId = esDesdeAqui ? cg.hasta_id : cg.desde_id;
+                var munRemoto = esDesdeAqui ? cg.hasta_municipio_nombre : cg.desde_municipio_nombre;
+                
+                var repLocal = representanteVisible(equipoLocalId);
+                if (!repLocal) continue;
+                
+                var pLocal = puntoCentro(repLocal);
+                if (!pLocal) continue;
+                
+                // Punto de salida (borde del contenedor)
+                var pRemoto = {
+                    x: esDesdeAqui ? 3000 : 0,
+                    y: pLocal.y
+                };
+                
+                var line = document.createElementNS(SVGNS, 'line');
+                line.setAttribute('x1', pLocal.x);
+                line.setAttribute('y1', pLocal.y);
+                line.setAttribute('x2', pRemoto.x);
+                line.setAttribute('y2', pRemoto.y);
+                line.setAttribute('stroke', cg.tipo === 'FO' ? '#ff9f1c' : '#70e000');
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('stroke-dasharray', '10 6');
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('opacity', '0.7');
+                
+                var title = document.createElementNS(SVGNS, 'title');
+                title.textContent = '🔗 Conexión global a ' + munRemoto + '\n' + cg.tipo + ' ' + cg.velocidad;
+                line.appendChild(title);
+                
+                svg.appendChild(line);
+            }
+        })
+        .catch(function () { });
+}
+
+// Llamar esta función al final de dibujarConexiones()
+dibujarConexionesGlobalesEnTopologia();
 }
 
 function abrirModal(titulo, contenido) {

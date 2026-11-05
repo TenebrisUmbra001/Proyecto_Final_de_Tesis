@@ -1,4 +1,3 @@
-//backupConfigs.ts
 import { Client } from 'ssh2';
 import { getTopologia } from './healthTests/monitor';
 import { guardarConfigSwitch, getFechaUltimaConfig } from './db/db';
@@ -23,27 +22,91 @@ export async function backupSwitch(sw: any): Promise<boolean> {
     return new Promise((resolve) => {
         const conn = new Client();
         let out = '';
-        const timeout = setTimeout(() => { try { conn.end(); } catch (e) {} resolve(false); }, 30000);
+        
+        // 🔧 Aumentar timeout a 60 segundos para configs grandes
+        const timeout = setTimeout(() => { 
+            try { conn.end(); } catch (e) {} 
+            resolve(false); 
+        }, 60000);
 
         conn.on('ready', () => {
-            conn.exec(comandoConfig(sw.marca), (err, stream) => {
-                if (err) { clearTimeout(timeout); conn.end(); return resolve(false); }
-                stream.on('data', (d: Buffer) => { out += d.toString('utf8'); });
-                stream.stderr.on('data', (d: Buffer) => { out += d.toString('utf8'); });
-                stream.on('close', () => {
-                    clearTimeout(timeout);
-                    conn.end();
-                    guardarConfigSwitch(sw.id, sw.nombre, sw.ip, out).catch(() => {});
-                    console.log(`💾 [BACKUP] Config guardada: ${sw.nombre} (${sw.ip})`);
-                    resolve(true);
+            // 🔧 Usar shell en lugar de exec para poder interactuar (enviar espacios si hay "More")
+            conn.shell((err, stream) => {
+                if (err) { 
+                    clearTimeout(timeout); 
+                    conn.end(); 
+                    return resolve(false); 
+                }
+                
+                let finished = false;
+
+                stream.on('data', (d: Buffer) => {
+                    const text = d.toString('utf8');
+                    out += text;
+
+                    // 🔧 Si el switch pausa la salida, enviar un espacio automáticamente para continuar
+                    if (text.includes('---- More ----') || text.includes('--More--')) {
+                        stream.write(' ');
+                    }
                 });
+
+                stream.stderr.on('data', (d: Buffer) => {
+                    out += d.toString('utf8');
+                });
+
+                stream.on('close', () => {
+                    if (!finished) {
+                        finished = true;
+                        clearTimeout(timeout);
+                        conn.end();
+                        
+                        // 🔧 Limpieza básica: quitar el eco de los comandos enviados
+                        const cleanOut = out
+                            .replace(/screen-length 0 temporary\r?\n/gi, '')
+                            .replace(/display current-configuration\r?\n/gi, '')
+                            .replace(/show running-config\r?\n/gi, '')
+                            .trim();
+                        
+                        // Validar que trajo algo útil (más de 200 caracteres)
+                        if (cleanOut.length > 200) { 
+                            guardarConfigSwitch(sw.id, sw.nombre, sw.ip, cleanOut).catch(() => {});
+                            console.log(`💾 [BACKUP] Config guardada: ${sw.nombre} (${sw.ip})`);
+                            resolve(true);
+                        } else {
+                            console.warn(`⚠️ [BACKUP] Config muy corta o fallida para ${sw.nombre}. Longitud: ${cleanOut.length}`);
+                            resolve(false);
+                        }
+                    }
+                });
+
+                // 🔧 NUEVO: Intentar desactivar paginación primero (funciona en Huawei/H3C y muchos otros)
+                stream.write('screen-length 0 temporary\n');
+                
+                setTimeout(() => {
+                    // Enviar el comando de configuración
+                    stream.write(comandoConfig(sw.marca) + '\n');
+                    
+                    // 🔧 Cerrar la conexión después de un tiempo prudencial 
+                    // (algunos switches no cierran el shell automáticamente después del comando)
+                    setTimeout(() => {
+                        if (!finished) {
+                            stream.end();
+                        }
+                    }, 15000); // 15 segundos después de enviar el comando es más que suficiente
+                    
+                }, 1000); // Esperar 1 segundo después de enviar screen-length
             });
         });
-        conn.on('error', () => { clearTimeout(timeout); resolve(false); });
+
+        conn.on('error', () => { 
+            clearTimeout(timeout); 
+            resolve(false); 
+        });
+
         conn.connect({
             host: sw.ip, port: 22,
             username: process.env.SSH_USER, password: process.env.SSH_PASS,
-            readyTimeout: 10000,
+            readyTimeout: 15000, // Aumentado a 15s para conexiones lentas
             algorithms: {
                 kex: [
                     'ecdh-sha2-nistp256', 'ecdh-sha2-nistp384', 'ecdh-sha2-nistp521',

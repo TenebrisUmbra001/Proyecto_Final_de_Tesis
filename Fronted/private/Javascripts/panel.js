@@ -618,19 +618,22 @@ function cargarConfigs() {
         html += '</table>';
         document.getElementById('tablaConfigs').innerHTML = html;
 
-        var btns = document.querySelectorAll('#tablaConfigs [data-cfg]');
+               var btns = document.querySelectorAll('#tablaConfigs [data-cfg]');
         for (var b = 0; b < btns.length; b++) {
             btns[b].addEventListener('click', function () {
                 var cfgId = this.getAttribute('data-cfg');
                 fetch('/api/admin/configs/' + cfgId, { credentials: 'same-origin' })
                     .then(function (r) { return r.json(); })
                     .then(function (c) {
-                        abrirModal('💾 Config de ' + c.equipo_nombre + ' — ' + new Date(c.fecha).toLocaleString(),
-                            '<p style="color:#9fb3c8;font-size:12px;margin-bottom:8px;">' +
+                        // 🔧 NUEVO: Modal con botón de cerrar explícito y pre-formateo perfecto
+                        var html = '<p style="color:#9fb3c8;font-size:12px;margin-bottom:8px;">' +
                             '📊 Tamaño: ' + c.tamanio + ' bytes · IP: ' + esc(c.ip) + '</p>' +
-                            '<pre style="background:#1e1e1e;color:#0f0;padding:12px;max-height:70vh;overflow:auto;font-size:12px;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;">' + esc(c.configuracion) + '</pre>' +
-                            '<div style="text-align:center;margin-top:14px;">' +
-                            '<a class="btn b-verde" style="text-decoration:none;display:inline-block;" href="/api/admin/configs/' + c.id + '/descargar">⬇️ Descargar .txt</a></div>');
+                            '<pre style="background:#1e1e1e;color:#0f0;padding:12px;max-height:65vh;overflow:auto;font-size:11px;white-space:pre;font-family:Consolas,monospace;line-height:1.3;">' + esc(c.configuracion) + '</pre>' +
+                            '<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">' +
+                            '<a class="btn b-verde" style="text-decoration:none;display:inline-block;" href="/api/admin/configs/' + c.id + '/descargar">⬇️ Descargar .txt</a>' +
+                            '<button class="btn b-gris" onclick="cerrarModal()" style="background:#555;">✕ Cerrar</button>' +
+                            '</div>';
+                        abrirModal('💾 Config de ' + c.equipo_nombre + ' — ' + new Date(c.fecha).toLocaleString(), html);
                     });
             });
         }
