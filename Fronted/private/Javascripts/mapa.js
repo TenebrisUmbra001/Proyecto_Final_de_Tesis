@@ -1,3 +1,4 @@
+// ---------- Posiciones de cada municipio (porcentajes) ----------
 var POSICIONES = {
   "img-sandino": { left: "2.5390616761376923%", top: "49.97333333333333%", width: "31.98198198198198%" },
   "img-mantua": { left: "17.122395391552097%", top: "26.5564453125%", width: "17.56756756756757%" },
@@ -15,6 +16,7 @@ var POSICIONES = {
 var conexionesGlobalesCache = [];
 var rolUsuarioMapa = 'operador';
 
+// ---------- Aplica las posiciones del JSON ----------
 function aplicarPosiciones() {
   for (var id in POSICIONES) {
     var el = document.getElementById(id);
@@ -26,6 +28,7 @@ function aplicarPosiciones() {
   }
 }
 
+// ---------- Contador de SOLO equipos de red ----------
 function contarEquiposRed(muni) {
   var c = { 'switch': 0, 'modem': 0, 'transceiver': 0 };
   var u, e, l, k;
@@ -44,6 +47,7 @@ function contarEquiposRed(muni) {
   return c;
 }
 
+// ---------- Carga un municipio desde la BD ----------
 function cargarMunicipio(id, callback) {
   fetch('/api/topologia/db/' + encodeURIComponent(id), { credentials: 'same-origin' })
     .then(function (r) {
@@ -58,6 +62,7 @@ function cargarMunicipio(id, callback) {
     });
 }
 
+// ---------- Selección de municipio ----------
 function seleccionarMunicipio(img) {
   var id = img.getAttribute('data-id');
   var nombre = img.getAttribute('data-nombre');
@@ -82,6 +87,8 @@ function seleccionarMunicipio(img) {
   });
 }
 
+// ================= CONEXIONES GLOBALES =================
+
 function cargarConexionesGlobales() {
   fetch('/api/topologia/conexiones-globales', { credentials: 'same-origin' })
     .then(function (r) { return r.json(); })
@@ -97,12 +104,12 @@ function cargarConexionesGlobales() {
 function centroMunicipio(imgId) {
   var el = document.getElementById(imgId);
   if (!el) return null;
-  var rect = el.getBoundingClientRect();
-  var mapa = document.getElementById('contenedor-mapa') || document.body;
-  var mapaRect = mapa.getBoundingClientRect();
+  var contenedor = document.querySelector('.Mapa') || document.body;
+  var contRect = contenedor.getBoundingClientRect();
+  var elRect = el.getBoundingClientRect();
   return {
-    x: rect.left - mapaRect.left + rect.width / 2,
-    y: rect.top - mapaRect.top + rect.height / 2
+    x: elRect.left - contRect.left + elRect.width / 2,
+    y: elRect.top - contRect.top + elRect.height / 2
   };
 }
 
@@ -286,23 +293,27 @@ function abrirModalConexionGlobal() {
     .catch(function () { alert('Error cargando equipos'); });
 }
 
+// ---------- Inicio ----------
 function iniciar() {
   aplicarPosiciones();
 
-  var contenedor = document.getElementById('contenedor-mapa') || document.body;
-  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.id = 'capa-conexiones-mapa';
-  svg.setAttribute('width', '100%');
-  svg.setAttribute('height', '100%');
-  svg.style.position = 'absolute';
-  svg.style.top = '0';
-  svg.style.left = '0';
-  svg.style.pointerEvents = 'none';
-  svg.style.zIndex = '5';
-  if (contenedor.style.position === '' || contenedor.style.position === 'static') {
-    contenedor.style.position = 'relative';
+  // 🔧 Crear capa SVG dentro de .Mapa (no de body)
+  var contenedor = document.querySelector('.Mapa');
+  if (contenedor) {
+    if (contenedor.style.position === '' || contenedor.style.position === 'static') {
+      contenedor.style.position = 'relative';
+    }
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'capa-conexiones-mapa';
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = '5';
+    contenedor.appendChild(svg);
   }
-  contenedor.appendChild(svg);
 
   var imgs = document.querySelectorAll('.municipio');
   for (var i = 0; i < imgs.length; i++) {
