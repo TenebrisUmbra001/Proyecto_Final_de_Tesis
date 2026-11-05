@@ -14,19 +14,20 @@ import { calcularTodo } from './estadisticasAvanzadas';
 import { initHistorial, migrarDesdeJSON, purgarHistorial } from './historialBD';
 // BD
 import {
-    initDB,
-    migrarUsuariosIniciales,
+    initDB, migrarUsuariosIniciales,
     getUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario, cambiarPasswordUsuario,
     autenticarUsuario,
     getContactos, crearContacto, actualizarContacto, eliminarContacto,
-    getAvisos,
+    getAvisos, limpiarAvisos,
     getAuditoria,
-    listarConfigs, getConfig
+    listarConfigs, getConfig,
+    crearConexionGlobal, listarConexionesGlobales, eliminarConexionGlobal, getConexionesGlobalesDeEquipo,
+    leerTopologiaCompleta, guardarTopologiaCompleta, listarMunicipios
 } from './db/db';
 
 // Servicios
 import { enviarAlertaMonitoreo } from './EmailService/email';
-import { leerTopologiaCompleta, guardarTopologiaCompleta, listarMunicipios } from './db/db';
+
 
 dotenv.config();
 
@@ -253,9 +254,10 @@ app.delete('/api/admin/usuarios/:id', requiereRol('superadmin'), async (req, res
 app.get('/api/admin/estadisticas-avanzadas', requiereRol('admin', 'superadmin'), async (req, res) => {
     const dias = parseInt(String(req.query.dias || '30'), 10);
     const gran = String(req.query.gran || 'dia');
+    const equipoId = req.query.equipo ? String(req.query.equipo) : undefined;
     const hasta = Date.now();
     const desde = hasta - dias * 24 * 60 * 60 * 1000;
-    res.json(await calcularTodo(desde, hasta, gran));
+    res.json(await calcularTodo(desde, hasta, gran, equipoId));
 });
 app.get('/api/admin/equipos', requiereRol('admin', 'superadmin'), (req, res) => {
     const estados = getEstados();
@@ -413,6 +415,12 @@ app.delete('/api/admin/contactos/:id', requiereRol('admin', 'superadmin'), async
 app.get('/api/admin/avisos', requiereRol('admin', 'superadmin'), async (req, res) => {
     res.json(await getAvisos());
 });
+app.delete('/api/admin/avisos', requiereRol('superadmin'), async (req, res) => {
+    try {
+        const eliminados = await limpiarAvisos();
+        res.json({ exito: true, eliminados });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 app.post('/api/admin/probar-correo', requiereRol('admin', 'superadmin'), async (req, res) => {
     const ok = await enviarAlertaMonitoreo(
         { nombre: 'Prueba de sistema', tipo: 'test', ip: '-', municipio: '-', prioridad: 'media' },
@@ -449,7 +457,7 @@ app.get('/api/admin/configs/:id/descargar', requiereRol('admin', 'superadmin'), 
         const nombre = (c.equipo_nombre || 'config').replace(/[^a-zA-Z0-9_-]/g, '_');
         const fecha = new Date(c.fecha).toISOString().slice(0, 19).replace(/:/g, '-');
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${nombre}_${fecha}.cfg"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${nombre}_${fecha}.txt"`);
         res.send(c.configuracion);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -483,6 +491,42 @@ app.put('/api/topologia/db/:id', requiereLogin, async (req, res) => {
         res.json({ exito: true });
     } catch (e: any) {
         console.error('Error guardando topología:', e);
+        res.status(500).json({ error: e.message });
+    }
+});// 🔗 Conexiones globales (inter-municipios)
+app.post('/api/topologia/conexion-global', requiereRol('admin', 'superadmin'), async (req, res) => {
+    try {
+        const con = await crearConexionGlobal(req.body);
+        res.json({ exito: true, conexion: con });
+    } catch (e: any) {
+        console.error('Error creando conexión global:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/topologia/conexiones-globales', requiereLogin, async (req, res) => {
+    try {
+        const lista = await listarConexionesGlobales();
+        res.json(lista);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/topologia/conexiones-globales/:id', requiereRol('admin', 'superadmin'), async (req, res) => {
+    try {
+        const eliminados = await eliminarConexionGlobal(req.params.id);
+        res.json({ exito: true, eliminados });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/topologia/conexiones-equipo/:id', requiereLogin, async (req, res) => {
+    try {
+        const lista = await getConexionesGlobalesDeEquipo(req.params.id);
+        res.json(lista);
+    } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
 });

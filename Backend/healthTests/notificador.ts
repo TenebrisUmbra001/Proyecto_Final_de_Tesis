@@ -9,16 +9,9 @@ export async function notificarSegunPrioridad(recurso: any, detalle: string): Pr
     let contactos: any[] = [];
     try { contactos = await getContactosParaPrioridad(prio); } catch (e) { contactos = []; }
 
-    // Sin contactos en BD → fallback al .env
+    // 🔧 CORREGIDO: sin fallback al .env — solo se envía a contactos designados activos
     if (contactos.length === 0) {
-        if (prio === 'media' || prio === 'alta') {
-            await enviarAlertaMonitoreo(recurso, detalle).catch(() => {});
-            await registrarAviso(recurso, 'correo', process.env.ALERTAS_CORREO || '', detalle, prio);
-        }
-        if (prio === 'alta') {
-            await enviarSMS(`ALERTA: ${recurso.nombre} (${recurso.ip}) - ${detalle}`).catch(() => {});
-            await registrarAviso(recurso, 'sms', process.env.ALERTAS_SMS || '', detalle, prio);
-        }
+        console.warn(`⚠️ [NOTIFICADOR] No hay contactos designados para prioridad "${prio}". Alerta para "${recurso.nombre}" NO enviada.`);
         return;
     }
 

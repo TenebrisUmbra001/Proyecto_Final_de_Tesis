@@ -1,11 +1,13 @@
+<!--Admin.html-->
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
   <meta charset="UTF-8">
   <title>Panel Administrativo — RIM</title>
-  <!--- <script src="/private/libs/es6-promise.min.js"></script>
-  <script src="/private/libs/fetch.min.js"></script>--->
+  <!-- 🔧 Polyfills para Firefox 45 / Chrome antiguo -->
+  <script src="/private/libs/es6-promise.min.js"></script>
+  <script src="/private/libs/fetch.min.js"></script>
   <script src="/private/libs/socket.io.slim.js"></script>
   <script src="/private/libs/chart.min.js"></script>
   <script src="/private/libs/xlsx.full.min.js"></script>
@@ -38,7 +40,6 @@
     <button class="tab" data-tab="oracle">🗄️ Oracle ASM</button>
     <button class="tab" data-tab="backups">🗄️ Backups BD</button>
     <button class="tab" data-tab="analitica">📈 Analítica</button>
-
   </div>
 
   <main>
@@ -46,16 +47,26 @@
       <div class="toolbar">
         <h3>📈 Analítica de disponibilidad</h3>
         <div class="filtros">
-          <select id="selDias">
-            <option value="7">Últimos 7 días</option>
-            <option value="30" selected>Últimos 30 días</option>
-            <option value="90">Últimos 90 días</option>
-          </select>
-          <select id="selGran">
-            <option value="dia" selected>Por día</option>
-            <option value="semana">Por semana</option>
-            <option value="mes">Por mes</option>
-          </select>
+          <label style="color:#9fb3c8;font-size:12px;">Período:
+            <select id="selDias">
+              <option value="7">Últimos 7 días</option>
+              <option value="30" selected>Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+            </select>
+          </label>
+          <label style="color:#9fb3c8;font-size:12px;">Granularidad:
+            <select id="selGran">
+              <option value="dia" selected>Por día</option>
+              <option value="semana">Por semana</option>
+              <option value="mes">Por mes</option>
+            </select>
+          </label>
+          <!-- 🔧 NUEVO: Selector de equipo específico -->
+          <label style="color:#9fb3c8;font-size:12px;">Equipo específico:
+            <select id="selEquipoAnalitica" style="min-width:320px;">
+              <option value="">📊 Todos los equipos (vista global)</option>
+            </select>
+          </label>
           <button class="btn b-azul" id="btnAplicarAnalitica">Aplicar</button>
         </div>
       </div>
@@ -79,6 +90,7 @@
         <div id="heatmap" style="overflow-x:auto"></div>
       </div>
     </section>
+
     <section id="tab-oracle" style="display:none">
       <div class="toolbar">
         <h3>🗄️ Diskgroups ASM (espacio de las BD)</h3>
@@ -86,6 +98,7 @@
       </div>
       <div id="tablaAsm"></div>
     </section>
+
     <section id="tab-equipos">
       <div class="toolbar">
         <h3>🖧 Equipos y servicios monitoreados</h3>

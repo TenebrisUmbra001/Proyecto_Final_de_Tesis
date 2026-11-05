@@ -20,15 +20,13 @@ function clavePeriodo(t: number, gran: string): string {
     return d.toISOString().slice(0, 7);
 }
 
-export async function calcularTodo(desde: number, hasta: number, gran: string) {
+export async function calcularTodo(desde: number, hasta: number, gran: string, equipoId?: string) {
     const eventos = await obtenerEventosRango(desde, hasta);
     const recursos = extraerRecursos() as any[];
     const munDeEquipo: Record<string, string> = {};
     const nombreDeEquipo: Record<string, string> = {};
     for (const r of recursos) { munDeEquipo[r.id] = r.municipio; nombreDeEquipo[r.id] = r.nombre; }
 
- 
-    // Agrupar eventos por equipo (nombre/municipio vienen de la BD)
     interface EquipoHistorial {
         nombre: string;
         municipio: string;
@@ -38,13 +36,14 @@ export async function calcularTodo(desde: number, hasta: number, gran: string) {
     const porEquipo: Record<string, EquipoHistorial> = {};
     for (const ev of eventos) {
         const id = ev.equipo_id;
+        if (equipoId && id !== equipoId) continue;
+        
         if (!porEquipo[id]) porEquipo[id] = { nombre: nombreDeEquipo[id] || ev.nombre || id, municipio: munDeEquipo[id] || ev.municipio || 'otros', eventos: [] };
         if (ev.nombre) porEquipo[id].nombre = ev.nombre;
         if (ev.municipio) porEquipo[id].municipio = ev.municipio;
         porEquipo[id].eventos.push(ev);
     }
 
-    // ── 1. Tendencia ──
     const buckets: Record<string, { ok: number; total: number; porMun: Record<string, { ok: number; total: number }> }> = {};
     for (const id of Object.keys(porEquipo)) {
         const mun = porEquipo[id].municipio;
@@ -65,7 +64,6 @@ export async function calcularTodo(desde: number, hasta: number, gran: string) {
         porMunicipio[m] = labels.map(k => { const b = buckets[k].porMun[m]; return b && b.total ? Math.round(100 * b.ok / b.total) : (b ? 100 : null as any); });
     }
 
-    // ── 2/3. Incidentes, Top, MTTR/MTBF ──
     for (const id of Object.keys(porEquipo)) (porEquipo as any)[id].incidentes = extraerIncidentes(porEquipo[id].eventos);
 
     const top = Object.keys(porEquipo)
@@ -104,10 +102,27 @@ export async function calcularTodo(desde: number, hasta: number, gran: string) {
     const porEquipoMM = Object.keys(porEquipo).map(id => ({ id, nombre: porEquipo[id].nombre, municipio: porEquipo[id].municipio, ...mttrMtbfDe(porEquipo[id].incidentes || []) }))
         .filter(x => x.incidentes > 0).sort((a, b) => b.incidentes - a.incidentes);
 
-    // ── 4. Heatmap ──
     const heatmap: number[][] = [];
     for (let d = 0; d < 7; d++) heatmap.push(new Array(24).fill(0));
     for (const inc of todosIncs) { const dt = new Date(inc.inicio); heatmap[(dt.getDay() + 6) % 7][dt.getHours()]++; }
 
-    return { tendencia: { labels, global, porMunicipio }, top, mttrMtbf: { global: globalMM, porMunicipio: porMunicipioMM, porEquipo: porEquipoMM }, heatmap };
+    // 🔧 CORREGIDO: quitar 'incidentes' explícito porque ya viene en el spread
+    let equipoSeleccionado: any = null;
+    if (equipoId && porEquipo[equipoId]) {
+        const eq = porEquipo[equipoId];
+        equipoSeleccionado = {
+            id: equipoId,
+            nombre: eq.nombre,
+            municipio: eq.municipio,
+            ...mttrMtbfDe(eq.incidentes || [])
+        };
+    }
+
+    return { 
+        tendencia: { labels, global, porMunicipio }, 
+        top, 
+        mttrMtbf: { global: globalMM, porMunicipio: porMunicipioMM, porEquipo: porEquipoMM }, 
+        heatmap,
+        equipoSeleccionado
+    };
 }

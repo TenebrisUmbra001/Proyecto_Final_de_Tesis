@@ -1,45 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa de Conectividad de Pinar del Rio</title>
-  <link rel="stylesheet" href="/private/Styles/mapa.css" />
+  <meta charset="UTF-8">
+  <title>Mapa de Municipios — RIM</title>
+  <link rel="stylesheet" href="/private/Styles/mapa.css">
 </head>
 <body>
   <header>
-    <h1>Mapa De Conectividad RIM Pinar Del Rio</h1>
-    <button id="btnAdmin" class="AdminPanel" title="Panel de Administracion" style="display:none;">
-      ⚙ Panel Administracion
-    </button>
-    <button id="btnSalir" class="SalirPanel">Salir</button>
+    <div>
+      <h2>🗺️ Mapa de Municipios — Red RIM</h2>
+    </div>
+    <div>
+      <button class="btn b-azul" id="btnConectarGlobal" style="display:none;">🔗 Conectar municipios</button>
+      <button class="btn b-azul" id="btnAdmin" style="display:none;">🛠️ Panel</button>
+      <button class="btn b-rojo" id="btnSalir">Salir</button>
+    </div>
   </header>
 
   <main>
-    <section class="Mapa">
-      <img class="municipio" id="img-sandino"      data-id="sandino"      data-nombre="Sandino"             draggable="false" src="/private/assets/SandinoNew.png"     alt="Sandino" />
-      <img class="municipio" id="img-mantua"       data-id="mantua"       data-nombre="Mantua"              draggable="false" src="/private/assets/mantuaNEW.png"      alt="Mantua" />
-      <img class="municipio" id="img-minas"        data-id="minas"        data-nombre="Minas de Matahambre" draggable="false" src="/private/assets/minas_NEW.png"       alt="Minas" />
-      <img class="municipio" id="img-vinales"      data-id="vinales"      data-nombre="Viñales"             draggable="false" src="/private/assets/vinalesNEW.png"      alt="Viñales" />
-      <img class="municipio" id="img-palma"        data-id="palma"        data-nombre="La Palma"            draggable="false" src="/private/assets/palmaNEW.png"        alt="La Palma" />
-      <img class="municipio" id="img-guane"        data-id="guane"        data-nombre="Guane"               draggable="false" src="/private/assets/guaneNEW.png"        alt="Guane" />
-      <img class="municipio" id="img-sanluis"      data-id="sanluis"      data-nombre="San Luis"            draggable="false" src="/private/assets/sanluisNEW.png"      alt="San Luis" />
-      <img class="municipio" id="img-sanjuan"      data-id="sanjuan"      data-nombre="San Juan y Martínez" draggable="false" src="/private/assets/sanjuanNEW.png"      alt="San Juan" />
-      <img class="municipio" id="img-pinar"        data-id="pinar"        data-nombre="Pinar del Río"       draggable="false" src="/private/assets/pinarNEW.png"        alt="Pinar" />
-      <img class="municipio" id="img-consolacion"  data-id="consolacion"  data-nombre="Consolación del Sur" draggable="false" src="/private/assets/consolacion_NEW.png" alt="Consolación" />
-      <img class="municipio" id="img-los-palacios" data-id="los-palacios" data-nombre="Los Palacios"        draggable="false" src="/private/assets/palacios_NEW.png"    alt="Los Palacios" />
-    </section>
+    <div id="contenedor-mapa" style="position:relative;">
+      <img src="/private/Images/mapa-pinar.png" alt="Mapa" style="width:100%;height:auto;">
+      <img class="municipio" id="img-sandino" data-id="sandino" data-nombre="Sandino" src="/private/Images/municipio.png" alt="Sandino">
+      <img class="municipio" id="img-mantua" data-id="mantua" data-nombre="Mantua" src="/private/Images/municipio.png" alt="Mantua">
+      <img class="municipio" id="img-minas" data-id="minas" data-nombre="Minas de Matahambre" src="/private/Images/municipio.png" alt="Minas">
+      <img class="municipio" id="img-vinales" data-id="vinales" data-nombre="Viñales" src="/private/Images/municipio.png" alt="Viñales">
+      <img class="municipio" id="img-palma" data-id="palma" data-nombre="La Palma" src="/private/Images/municipio.png" alt="La Palma">
+      <img class="municipio" id="img-guane" data-id="guane" data-nombre="Guane" src="/private/Images/municipio.png" alt="Guane">
+      <img class="municipio" id="img-sanluis" data-id="sanluis" data-nombre="San Luis" src="/private/Images/municipio.png" alt="San Luis">
+      <img class="municipio" id="img-sanjuan" data-id="sanjuan" data-nombre="San Juan y Martínez" src="/private/Images/municipio.png" alt="San Juan">
+      <img class="municipio" id="img-pinar" data-id="pinar" data-nombre="Pinar del Río" src="/private/Images/municipio.png" alt="Pinar">
+      <img class="municipio" id="img-consolacion" data-id="consolacion" data-nombre="Consolación del Sur" src="/private/Images/municipio.png" alt="Consolación">
+      <img class="municipio" id="img-los-palacios" data-id="los-palacios" data-nombre="Los Palacios" src="/private/Images/municipio.png" alt="Los Palacios">
+    </div>
 
-    <section class="Informacion">
-      <h2 class="h2">INFORMACION</h2>
-      <p id="listad">Seleccione un municipio</p>
+    <div id="panel-detalle">
+      <h3 id="listad">Selecciona un municipio en el mapa</h3>
       <div id="detalle"></div>
-    </section>
+    </div>
   </main>
-
-  <footer>
-    <p>Todos los derechos reservados ICC CCR Pinar del Rio MININT<br />2026</p>
-  </footer>
 
   <script src="/private/Javascripts/mapa.js"></script>
 </body>

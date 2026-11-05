@@ -1,3 +1,4 @@
+//backupConfigs.ts
 import { Client } from 'ssh2';
 import { getTopologia } from './healthTests/monitor';
 import { guardarConfigSwitch, getFechaUltimaConfig } from './db/db';

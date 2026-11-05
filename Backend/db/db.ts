@@ -93,11 +93,22 @@ CREATE TABLE IF NOT EXISTS configs_switch (
   equipo_id VARCHAR(50), equipo_nombre VARCHAR(200), ip VARCHAR(45),
   configuracion TEXT, fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS conexiones_globales (
+  id VARCHAR(50) PRIMARY KEY,
+  desde_id VARCHAR(50) NOT NULL,
+  hasta_id VARCHAR(50) NOT NULL,
+  desde_municipio_id VARCHAR(50) REFERENCES municipios(id) ON DELETE CASCADE,
+  hasta_municipio_id VARCHAR(50) REFERENCES municipios(id) ON DELETE CASCADE,
+  tipo VARCHAR(20),
+  velocidad VARCHAR(20),
+  puerto_desde INT,
+  puerto_hasta INT,
+  fecha_creada TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 export async function initDB() {
     await pool.query(ESQUEMA);
-    // 🔧 NUEVO: Agregar columna monitoreo si no existe (no destructivo)
     await pool.query(`ALTER TABLE equipos ADD COLUMN IF NOT EXISTS monitoreo VARCHAR(10) DEFAULT 'ping'`);
     console.log('✅ [BD] Esquema PostgreSQL listo');
 }
@@ -144,6 +155,11 @@ export async function registrarAviso(recurso: any, canal: string, destinatario: 
 export async function getAvisos() {
     const r = await pool.query('SELECT * FROM avisos_enviados ORDER BY fecha DESC LIMIT 200');
     return r.rows;
+}
+
+export async function limpiarAvisos(): Promise<number> {
+    const result = await pool.query('DELETE FROM avisos_enviados');
+    return result.rowCount || 0;
 }
 
 export async function registrarSSHInicio(usuarioSistema: string, usuarioSsh: string, equipoId: string, ip: string) {
@@ -320,7 +336,7 @@ function reconstruirLocal(l: any, todosLocales: any[], equipos: any[], servicios
             puertos_ethernet: eq.puertos_ethernet, puertos_ethernet_en_uso: eq.puertos_ethernet_en_uso,
             puerto_ethernet: eq.puerto_ethernet, puerto_ethernet_en_uso: eq.puerto_ethernet_en_uso,
             usa_adsl: eq.usa_adsl, prioridad: eq.prioridad,
-            monitoreo: eq.monitoreo || 'ping',   // 🔧 NUEVO
+            monitoreo: eq.monitoreo || 'ping',
             x: eq.x, y: eq.y, width: eq.width, height: eq.height
         })),
         servicios: servicios.filter(s => s.local_id === l.id).map(s => ({
@@ -433,7 +449,7 @@ async function insertarLocalRecursivo(cliente: any, local: any, edificioId: stri
             eq.fecha_instalacion, eq.ubicacion, eq.ip, eq.tipo_gestion, eq.gestionable, eq.velocidad_enlace,
             eq.puertos_fibra, eq.puertos_fibra_en_uso, eq.puertos_ethernet, eq.puertos_ethernet_en_uso,
             eq.puerto_ethernet, eq.puerto_ethernet_en_uso, eq.usa_adsl, eq.prioridad || 'baja',
-            eq.x, eq.y, eq.width, eq.height, eq.monitoreo || 'ping']);   // 🔧 NUEVO
+            eq.x, eq.y, eq.width, eq.height, eq.monitoreo || 'ping']);
     }
 
     for (const s of (local.servicios || [])) {
@@ -478,6 +494,51 @@ export async function listarConfigs() {
 export async function getConfig(id: number) {
     const r = await pool.query('SELECT * FROM configs_switch WHERE id=$1', [id]);
     return r.rows[0];
+}
+
+// ================= CONEXIONES GLOBALES (inter-municipios) =================
+
+export async function crearConexionGlobal(con: any) {
+    const r = await pool.query(
+        `INSERT INTO conexiones_globales 
+         (id, desde_id, hasta_id, desde_municipio_id, hasta_municipio_id, tipo, velocidad, puerto_desde, puerto_hasta)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [con.id, con.desde_id, con.hasta_id, con.desde_municipio_id, con.hasta_municipio_id,
+         con.tipo, con.velocidad, con.puerto_desde || null, con.puerto_hasta || null]);
+    return r.rows[0];
+}
+
+export async function listarConexionesGlobales() {
+    const r = await pool.query(`
+        SELECT 
+            cg.*,
+            m1.nombre AS desde_municipio_nombre,
+            m2.nombre AS hasta_municipio_nombre
+        FROM conexiones_globales cg
+        LEFT JOIN municipios m1 ON cg.desde_municipio_id = m1.id
+        LEFT JOIN municipios m2 ON cg.hasta_municipio_id = m2.id
+        ORDER BY cg.fecha_creada DESC
+    `);
+    return r.rows;
+}
+
+export async function eliminarConexionGlobal(id: string) {
+    const r = await pool.query('DELETE FROM conexiones_globales WHERE id = $1', [id]);
+    return r.rowCount || 0;
+}
+
+export async function getConexionesGlobalesDeEquipo(equipoId: string) {
+    const r = await pool.query(`
+        SELECT 
+            cg.*,
+            m1.nombre AS desde_municipio_nombre,
+            m2.nombre AS hasta_municipio_nombre
+        FROM conexiones_globales cg
+        LEFT JOIN municipios m1 ON cg.desde_municipio_id = m1.id
+        LEFT JOIN municipios m2 ON cg.hasta_municipio_id = m2.id
+        WHERE cg.desde_id = $1 OR cg.hasta_id = $1
+    `, [equipoId]);
+    return r.rows;
 }
 
 export { pool };

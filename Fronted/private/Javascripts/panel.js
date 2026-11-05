@@ -3,18 +3,17 @@ var usuariosCache = [];
 var contactosCache = [];
 var avisosCache = [];
 var auditoriaCache = [];
+var configsCache = [];
 var contactoEditId = null;
 var usuarioEditId = null;
 var rolActual = 'operador';
 var nombreUsuario = '';
 
-// 🔧 Paginación
 var TAM_PAGINA = 15;
 var paginaEquipos = 1;
 var paginaAvisos = 1;
 var paginaAuditoria = 1;
 
-// 🔧 Gráficos (instancias para destruir al refrescar)
 var chartTipo = null, chartEstado = null, chartMunicipio = null;
 var chartTendencia = null;
 function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -57,20 +56,23 @@ document.addEventListener('DOMContentLoaded', function () {
             if (t === 'auditoria') { paginaAuditoria = 1; cargarAuditoria(); }
             if (t === 'configs') cargarConfigs();
             if (t === 'backups') cargarBackups();
-            if (t === 'oracle') cargarOracleAsm(); // 🔧 NUEVO
+            if (t === 'oracle') cargarOracleAsm();
         });
     }
 
-    // 🔧 Filtros de búsqueda
     document.getElementById('buscador').addEventListener('keyup', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroMunicipio').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroTipo').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroEstado').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
-    document.getElementById('btnAplicarAnalitica').addEventListener('click', cargarAnalitica);
+
+    document.getElementById('btnAplicarAnalitica').addEventListener('click', function () {
+        poblarSelectorEquiposAnalitica();
+        cargarAnalitica();
+    });
+
     document.getElementById('btnNuevoContacto').addEventListener('click', function () { abrirModalContacto(null); });
     document.getElementById('btnNuevoUsuario').addEventListener('click', function () { abrirModalUsuario(null); });
 
-    // 🔧 Backup manual de BD
     document.getElementById('btnBackupAhora').addEventListener('click', function () {
         this.disabled = true;
         this.textContent = '⏳ Respaldando...';
@@ -85,12 +87,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(function () { btn.disabled = false; btn.textContent = '💾 Respaldar ahora'; });
     });
 
-    // 🔧 Botones de exportación
     document.getElementById('btnExportXlsx').addEventListener('click', exportarExcel);
     document.getElementById('btnExportOracle').addEventListener('click', exportarOracle);
     document.getElementById('btnExportSql').addEventListener('click', exportarSql);
 
-    // 🔧 NUEVO: Botón refrescar Oracle ASM
     document.getElementById('btnRefrescarAsm').addEventListener('click', function () {
         this.disabled = true; this.textContent = '⏳ Consultando...';
         var btn = this;
@@ -101,11 +101,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     cargarMunicipiosFiltro();
-    cargarEquipos();
+    cargarEquipos().then(function () {
+        setTimeout(poblarSelectorEquiposAnalitica, 300);
+    });
     setInterval(cargarEquipos, 30000);
 });
 
-// 🔧 Cargar municipios para el filtro
 function cargarMunicipiosFiltro() {
     fetch('/api/municipios', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
@@ -120,11 +121,12 @@ function cargarMunicipiosFiltro() {
         }).catch(function () { });
 }
 
-// ================= EQUIPOS (con filtros + paginación) =================
 function cargarEquipos() {
-    fetch('/api/admin/equipos', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
-        equiposCache = lista; renderEquipos();
-    }).catch(function () { });
+    return fetch('/api/admin/equipos', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (lista) {
+            equiposCache = lista; renderEquipos();
+        }).catch(function () { });
 }
 
 function filtrarEquipos() {
@@ -175,7 +177,6 @@ function renderEquipos() {
     }
 }
 
-// 🔧 Paginación genérica
 function renderPaginacion(contId, pagina, totalPaginas, totalItems, cb) {
     var cont = document.getElementById(contId);
     if (totalPaginas <= 1) { cont.innerHTML = '<span class="pagina-info">' + totalItems + ' registro(s)</span>'; return; }
@@ -215,17 +216,17 @@ function abrirModalEquipo(e) {
     if ((b = document.getElementById('mSSH'))) b.onclick = function () { abrirConsolaSSH(e.ip, e.nombre, e.id); };
     if ((b = document.getElementById('mWeb'))) b.onclick = function () { abrirWeb(e.ip, e.nombre); };
     if ((b = document.getElementById('mTel'))) b.onclick = function () { abrirModal('📟 Telnet', '<p>Ejecuta:</p><div style="background:#1e1e1e;color:#0f0;padding:10px;font-family:monospace;">telnet ' + esc(e.ip) + '</div>'); };
+    
+    // 🔧 CORREGIDO: Sin localStorage, todo por query string
     if ((b = document.getElementById('mMapa'))) b.onclick = function () {
-        localStorage.setItem('rim_municipio_actual', e.municipioId);
-        localStorage.setItem('rim_enfocar_equipo', e.id);
-        window.open('/private/topologia.html', '_blank');
+        window.open('/private/topologia.html?municipio=' + encodeURIComponent(e.municipioId) + '&nombre=' + encodeURIComponent(e.municipio) + '&enfocar=' + encodeURIComponent(e.id), '_blank');
     };
+    
     if ((b = document.getElementById('mEditar'))) b.onclick = function () { abrirModalEditarEquipo(e); };
     if ((b = document.getElementById('mEliminar'))) b.onclick = function () { eliminarEquipoDesdePanel(e); };
     document.getElementById('mCerrar').onclick = cerrarModal;
 }
 
-// ✏️ Modal de edición de datos de placa
 function abrirModalEditarEquipo(e) {
     abrirModal('✏️ Editar: ' + esc(e.nombre),
         '<label>Descripción *</label><input id="eDesc" value="' + esc(e.nombre) + '">' +
@@ -266,7 +267,6 @@ function abrirModalEditarEquipo(e) {
     };
 }
 
-// 🗑️ Eliminar equipo desde el panel
 function eliminarEquipoDesdePanel(e) {
     if (!confirm('¿Eliminar el equipo "' + e.nombre + '"?\nSe eliminarán también sus conexiones.')) return;
     if (!confirm('CONFIRMAR: esta acción no se puede deshacer. ¿Continuar?')) return;
@@ -293,14 +293,11 @@ function abrirWeb(ip, nombre) {
     document.getElementById('wHttp').onclick = function () { var p = val('webPort'); window.open('http://' + ip + (p ? ':' + p : ''), '_blank'); };
 }
 
-// ================= DASHBOARD CON GRÁFICOS + TOTALES =================
 function cargarStats() {
     fetch('/api/admin/estadisticas', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
-        // Total general de equipos
         var totalEquipos = 0;
         for (var t in st.porTipo) totalEquipos += st.porTipo[t];
 
-        // Cards ampliadas
         document.getElementById('statsCards').innerHTML =
             '<div class="card"><div class="num">' + st.total + '</div><div class="lbl">Recursos totales</div></div>' +
             '<div class="card"><div class="num">' + totalEquipos + '</div><div class="lbl">Total equipos</div></div>' +
@@ -309,7 +306,6 @@ function cargarStats() {
             '<div class="card naranja"><div class="num" style="color:#f39c12">' + st.porEstado.degradado + '</div><div class="lbl">Degradados</div></div>' +
             '<div class="card gris"><div class="num">' + st.disponibilidad + '%</div><div class="lbl">Disponibilidad</div></div>';
 
-        // Tabla de totales por tipo con barras
         var maxTipo = 0;
         for (var tt in st.porTipo) if (st.porTipo[tt] > maxTipo) maxTipo = st.porTipo[tt];
         var htmlTipos = '<table><tr><th>Tipo</th><th>Cantidad</th><th>% del total</th><th style="width:35%"></th></tr>';
@@ -327,7 +323,6 @@ function cargarStats() {
 
         dibujarGraficos(st);
 
-        // Tabla de municipios
         var html = '<table><tr><th>Municipio</th><th>Recursos</th><th>Caídos</th><th style="width:35%">Impacto</th></tr>';
         for (var m in st.porMunicipio) {
             var d = st.porMunicipio[m];
@@ -382,7 +377,6 @@ function dibujarGraficos(st) {
     });
 }
 
-// ================= CONTACTOS (modal) =================
 function abrirModalContacto(c) {
     contactoEditId = c ? c.id : null;
     abrirModal(c ? '✏️ Editar contacto' : '➕ Nuevo contacto',
@@ -448,20 +442,27 @@ function cargarContactos() {
     }).catch(function () { });
 }
 
-// ================= AVISOS (paginado) =================
 function cargarAvisos() {
     fetch('/api/admin/avisos', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         avisosCache = lista;
         renderAvisos();
     }).catch(function () { });
 }
+
 function renderAvisos() {
     var totalPaginas = Math.max(1, Math.ceil(avisosCache.length / TAM_PAGINA));
     if (paginaAvisos > totalPaginas) paginaAvisos = totalPaginas;
     var inicio = (paginaAvisos - 1) * TAM_PAGINA;
     var pagina = avisosCache.slice(inicio, inicio + TAM_PAGINA);
 
-    var html = '<table><tr><th>Fecha</th><th>Recurso</th><th>Canal</th><th>Destinatario</th><th>Prioridad</th><th>Detalle</th></tr>';
+    var html = '';
+    if (rolActual === 'superadmin' && avisosCache.length > 0) {
+        html += '<div style="margin-bottom:14px;text-align:right;">' +
+            '<span style="color:#9fb3c8;font-size:12px;margin-right:10px;">Total: ' + avisosCache.length + ' registro(s)</span>' +
+            '<button class="btn b-rojo" id="btnLimpiarAvisos">🧹 Limpiar registros</button></div>';
+    }
+
+    html += '<table><tr><th>Fecha</th><th>Recurso</th><th>Canal</th><th>Destinatario</th><th>Prioridad</th><th>Detalle</th></tr>';
     if (!pagina.length) html += '<tr><td colspan="6"><div class="vacio">Aún no se han enviado avisos.</div></td></tr>';
     for (var i = 0; i < pagina.length; i++) {
         var a = pagina[i];
@@ -473,9 +474,28 @@ function renderAvisos() {
     html += '</table>';
     document.getElementById('tablaAvisos').innerHTML = html;
     renderPaginacion('paginacionAvisos', paginaAvisos, totalPaginas, avisosCache.length, function (p) { paginaAvisos = p; renderAvisos(); });
+
+    var btnLimpiar = document.getElementById('btnLimpiarAvisos');
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', function () {
+            if (!confirm('¿Eliminar TODOS los registros de avisos? Esta acción no se puede deshacer.')) return;
+            if (!confirm('CONFIRMAR: Se eliminarán ' + avisosCache.length + ' registros permanentemente. ¿Continuar?')) return;
+            this.disabled = true; this.textContent = '⏳ Eliminando...';
+            var btn = this;
+            fetch('/api/admin/avisos', { method: 'DELETE', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    btn.disabled = false; btn.textContent = '🧹 Limpiar registros';
+                    if (d.error) { alert('Error: ' + d.error); return; }
+                    alert('Registros eliminados: ' + d.eliminados);
+                    paginaAvisos = 1;
+                    cargarAvisos();
+                })
+                .catch(function () { btn.disabled = false; btn.textContent = '🧹 Limpiar registros'; alert('Error al limpiar registros'); });
+        });
+    }
 }
 
-// ================= USUARIOS (modal) =================
 function abrirModalUsuario(u) {
     usuarioEditId = u ? u.id : null;
     abrirModal(u ? '✏️ Editar usuario' : '➕ Nuevo usuario',
@@ -539,13 +559,13 @@ function cargarUsuarios() {
     }).catch(function () { });
 }
 
-// ================= AUDITORÍA SSH (paginada) =================
 function cargarAuditoria() {
     fetch('/api/admin/auditoria', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         auditoriaCache = lista;
         renderAuditoria();
     }).catch(function () { });
 }
+
 function renderAuditoria() {
     var totalPaginas = Math.max(1, Math.ceil(auditoriaCache.length / TAM_PAGINA));
     if (paginaAuditoria > totalPaginas) paginaAuditoria = totalPaginas;
@@ -565,33 +585,58 @@ function renderAuditoria() {
     renderPaginacion('paginacionAuditoria', paginaAuditoria, totalPaginas, auditoriaCache.length, function (p) { paginaAuditoria = p; renderAuditoria(); });
 }
 
-// ================= CONFIGS DE SWITCHES =================
 function cargarConfigs() {
     fetch('/api/admin/configs', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
-        var html = '<table><tr><th>Equipo</th><th>IP</th><th>Fecha</th><th>Tamaño</th><th></th></tr>';
-        if (!lista.length) html += '<tr><td colspan="5"><div class="vacio">Aún no hay configs respaldadas.</div></td></tr>';
+        configsCache = lista;
+
+        var porEquipo = {};
         for (var i = 0; i < lista.length; i++) {
             var c = lista[i];
-            html += '<tr><td><strong>' + esc(c.equipo_nombre) + '</strong></td><td>' + esc(c.ip) + '</td><td>' + new Date(c.fecha).toLocaleString() + '</td>' +
+            if (!porEquipo[c.equipo_id]) porEquipo[c.equipo_id] = [];
+            porEquipo[c.equipo_id].push(c);
+        }
+
+        var html = '<table><tr><th>Equipo</th><th>IP</th><th>Fecha</th><th>Tamaño</th><th></th></tr>';
+        if (!lista.length) html += '<tr><td colspan="5"><div class="vacio">Aún no hay configs respaldadas.</div></td></tr>';
+
+        for (var i = 0; i < lista.length; i++) {
+            var c = lista[i];
+            var configsDelEquipo = porEquipo[c.equipo_id] || [];
+            var posicion = configsDelEquipo.indexOf(c);
+            var esReciente = (posicion === 0 || posicion === 1);
+
+            var claseFila = esReciente ? ' style="background:rgba(33,192,99,0.12);"' : '';
+
+            html += '<tr' + claseFila + '><td><strong>' + esc(c.equipo_nombre) + '</strong>';
+            if (esReciente) html += ' <span class="badge bg-verde" title="Una de las 2 copias más recientes">reciente</span>';
+            html += '</td><td>' + esc(c.ip) + '</td><td>' + new Date(c.fecha).toLocaleString() + '</td>' +
                 '<td>' + c.tamanio + ' B</td><td>' +
                 '<button class="btn b-azul" data-cfg="' + c.id + '">👁️ Ver</button>' +
-                '<a class="btn b-verde" style="text-decoration:none;display:inline-block;" href="/api/admin/configs/' + c.id + '/descargar">⬇️ .cfg</a>' +
+                '<a class="btn b-verde" style="text-decoration:none;display:inline-block;" href="/api/admin/configs/' + c.id + '/descargar">⬇️ .txt</a>' +
                 '</td></tr>';
         }
         html += '</table>';
         document.getElementById('tablaConfigs').innerHTML = html;
+
         var btns = document.querySelectorAll('#tablaConfigs [data-cfg]');
         for (var b = 0; b < btns.length; b++) {
             btns[b].addEventListener('click', function () {
-                fetch('/api/admin/configs/' + this.getAttribute('data-cfg'), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (c) {
-                    abrirModal('💾 Config de ' + c.equipo_nombre, '<pre style="background:#1e1e1e;color:#0f0;padding:12px;max-height:60vh;overflow:auto;font-size:12px;">' + esc(c.configuracion) + '</pre>');
-                });
+                var cfgId = this.getAttribute('data-cfg');
+                fetch('/api/admin/configs/' + cfgId, { credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (c) {
+                        abrirModal('💾 Config de ' + c.equipo_nombre + ' — ' + new Date(c.fecha).toLocaleString(),
+                            '<p style="color:#9fb3c8;font-size:12px;margin-bottom:8px;">' +
+                            '📊 Tamaño: ' + c.tamanio + ' bytes · IP: ' + esc(c.ip) + '</p>' +
+                            '<pre style="background:#1e1e1e;color:#0f0;padding:12px;max-height:70vh;overflow:auto;font-size:12px;white-space:pre-wrap;word-wrap:break-word;line-height:1.4;">' + esc(c.configuracion) + '</pre>' +
+                            '<div style="text-align:center;margin-top:14px;">' +
+                            '<a class="btn b-verde" style="text-decoration:none;display:inline-block;" href="/api/admin/configs/' + c.id + '/descargar">⬇️ Descargar .txt</a></div>');
+                    });
             });
         }
     }).catch(function () { });
 }
 
-// ================= BACKUPS DE BD =================
 function cargarBackups() {
     fetch('/api/admin/backups-bd', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (lista) {
         var html = '<table><tr><th>Archivo</th><th>Fecha</th><th>Tamaño</th><th></th></tr>';
@@ -607,9 +652,6 @@ function cargarBackups() {
     }).catch(function () { });
 }
 
-// ================= EXPORTACIÓN (inventario físico) =================
-
-// Helper: descargar archivo en navegador
 function descargarArchivo(contenido, nombre, mime) {
     var blob = new Blob([contenido], { type: mime });
     var url = URL.createObjectURL(blob);
@@ -619,7 +661,6 @@ function descargarArchivo(contenido, nombre, mime) {
     setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 }
 
-// Helper: obtener inventario físico (solo datos de placa)
 function obtenerDatosParaExportar(cb) {
     fetch('/api/admin/inventario-fisico', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
@@ -627,22 +668,15 @@ function obtenerDatosParaExportar(cb) {
         .catch(function () { alert('Error al cargar datos para exportar'); });
 }
 
-// 📥 1. Exportar a Excel (.xlsx)
 function exportarExcel() {
     obtenerDatosParaExportar(function (lista) {
         var filas = lista.map(function (e) {
             var fecha = e.fecha_instalacion ? new Date(e.fecha_instalacion).toISOString().slice(0, 10) : '';
             return {
-                'ID': e.id,
-                'Tipo': e.tipo,
-                'Descripción': e.descripcion,
-                'PR / Código': e.pr,
-                'Sello': e.sello,
-                'Marca': e.marca,
-                'Modelo': e.modelo,
-                'Fecha instalación': fecha,
-                'Ubicación': e.ubicacion,
-                'Municipio': e.municipio
+                'ID': e.id, 'Tipo': e.tipo, 'Descripción': e.descripcion,
+                'PR / Código': e.pr, 'Sello': e.sello, 'Marca': e.marca,
+                'Modelo': e.modelo, 'Fecha instalación': fecha,
+                'Ubicación': e.ubicacion, 'Municipio': e.municipio
             };
         });
         var ws = XLSX.utils.json_to_sheet(filas);
@@ -658,7 +692,6 @@ function exportarExcel() {
     });
 }
 
-// 🗄️ 2. Exportar formato Oracle (CSV + .ctl)
 function exportarOracle() {
     obtenerDatosParaExportar(function (lista) {
         var lineas = [];
@@ -684,7 +717,6 @@ function exportarOracle() {
         var ctl =
             '-- ============================================================\n' +
             '-- Archivo de control para SQL*Loader (Oracle)\n' +
-            '-- Uso: sqlldr usuario/pass@db control=inventario_fisico.ctl\n' +
             '-- ============================================================\n' +
             'OPTIONS (SKIP=1, ROWS=1000)\n' +
             'LOAD DATA\n' +
@@ -694,32 +726,10 @@ function exportarOracle() {
             'FIELDS TERMINATED BY ";" OPTIONALLY ENCLOSED BY \'"\'' + '\n' +
             'TRAILING NULLCOLS\n' +
             '(\n' +
-            '  ID,\n' +
-            '  TIPO,\n' +
-            '  DESCRIPCION,\n' +
-            '  PR,\n' +
-            '  SELLO,\n' +
-            '  MARCA,\n' +
-            '  MODELO,\n' +
+            '  ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO,\n' +
             '  FECHA_INSTALACION DATE "YYYY-MM-DD",\n' +
-            '  UBICACION,\n' +
-            '  MUNICIPIO\n' +
-            ')\n' +
-            '\n' +
-            '-- DDL sugerido para crear la tabla en Oracle:\n' +
-            '-- CREATE TABLE INVENTARIO_FISICO_RIM (\n' +
-            '--   ID VARCHAR2(100) PRIMARY KEY,\n' +
-            '--   TIPO VARCHAR2(30),\n' +
-            '--   DESCRIPCION VARCHAR2(200),\n' +
-            '--   PR VARCHAR2(100),\n' +
-            '--   SELLO VARCHAR2(100),\n' +
-            '--   MARCA VARCHAR2(100),\n' +
-            '--   MODELO VARCHAR2(150),\n' +
-            '--   FECHA_INSTALACION DATE,\n' +
-            '--   UBICACION VARCHAR2(300),\n' +
-            '--   MUNICIPIO VARCHAR2(100),\n' +
-            '--   FECHA_CARGA DATE DEFAULT SYSDATE\n' +
-            '-- );\n';
+            '  UBICACION, MUNICIPIO\n' +
+            ')\n';
 
         var fecha = new Date().toISOString().slice(0, 10);
         descargarArchivo(csv, 'inventario_fisico_rim_' + fecha + '.dat', 'text/csv;charset=utf-8');
@@ -729,31 +739,17 @@ function exportarOracle() {
     });
 }
 
-// 📜 3. Exportar como SQL INSERTs
 function exportarSql() {
     obtenerDatosParaExportar(function (lista) {
         var sql = '-- ============================================================\n';
         sql += '-- Inventario Físico RIM — Generado el ' + new Date().toISOString() + '\n';
-        sql += '-- Solo datos de placa (sin IP, sin estado, sin prioridad)\n';
-        sql += '-- Compatible con Oracle, PostgreSQL, MySQL\n';
         sql += '-- ============================================================\n\n';
-        sql += '-- DDL sugerido:\n';
         sql += 'CREATE TABLE INVENTARIO_FISICO_RIM (\n';
-        sql += '  ID VARCHAR2(100) PRIMARY KEY,\n';
-        sql += '  TIPO VARCHAR2(30),\n';
-        sql += '  DESCRIPCION VARCHAR2(200),\n';
-        sql += '  PR VARCHAR2(100),\n';
-        sql += '  SELLO VARCHAR2(100),\n';
-        sql += '  MARCA VARCHAR2(100),\n';
-        sql += '  MODELO VARCHAR2(150),\n';
-        sql += '  FECHA_INSTALACION DATE,\n';
-        sql += '  UBICACION VARCHAR2(300),\n';
-        sql += '  MUNICIPIO VARCHAR2(100),\n';
-        sql += '  FECHA_CARGA DATE DEFAULT SYSDATE\n';
-        sql += ');\n\n';
-        sql += '-- Truncar antes de cargar:\n';
+        sql += '  ID VARCHAR2(100) PRIMARY KEY, TIPO VARCHAR2(30), DESCRIPCION VARCHAR2(200),\n';
+        sql += '  PR VARCHAR2(100), SELLO VARCHAR2(100), MARCA VARCHAR2(100), MODELO VARCHAR2(150),\n';
+        sql += '  FECHA_INSTALACION DATE, UBICACION VARCHAR2(300), MUNICIPIO VARCHAR2(100),\n';
+        sql += '  FECHA_CARGA DATE DEFAULT SYSDATE\n);\n\n';
         sql += 'TRUNCATE TABLE INVENTARIO_FISICO_RIM;\n\n';
-        sql += '-- Datos:\n';
 
         lista.forEach(function (e) {
             var fecha = e.fecha_instalacion
@@ -772,7 +768,7 @@ function exportarSql() {
                 "'" + (e.municipio || '').replace(/'/g, "''") + "'",
                 'SYSDATE'
             ];
-            sql += 'INSERT INTO INVENTARIO_FISICO_RIM (ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION, UBICACION, MUNICIPIO, FECHA_CARGA) VALUES (' + vals.join(', ') + ');\n';
+            sql += 'INSERT INTO INVENTARIO_FISICO_RIM VALUES (' + vals.join(', ') + ');\n';
         });
 
         sql += '\nCOMMIT;\n';
@@ -782,7 +778,6 @@ function exportarSql() {
     });
 }
 
-// ================= ORACLE ASM ================= // 🔧 NUEVO
 function cargarOracleAsm() {
     fetch('/api/admin/oracle-asm', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
         var html = '<p style="color:#9fb3c8;font-size:12px;">Umbral de alerta: ' + st.umbral +
@@ -802,7 +797,6 @@ function cargarOracleAsm() {
     }).catch(function () { });
 }
 
-// ================= TERMINAL SSH =================
 function abrirConsolaSSH(ip, nombre, equipoId) {
     abrirModal('SSH — ' + esc(nombre),
         '<label>Usuario</label><input type="text" id="sshUser" value="admin">' +
@@ -846,17 +840,22 @@ function iniciarTerminalSSH(ip, user, pass, nombre, equipoId) {
         cerrarModal();
     };
 }
-// ================= ANALÍTICA AVANZADA =================
+
 var DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 function cargarAnalitica() {
     var dias = val('selDias') || '30';
     var gran = val('selGran') || 'dia';
-    fetch('/api/admin/estadisticas-avanzadas?dias=' + dias + '&gran=' + gran, { credentials: 'same-origin' })
+    var equipoId = val('selEquipoAnalitica') || '';
+
+    var url = '/api/admin/estadisticas-avanzadas?dias=' + dias + '&gran=' + gran;
+    if (equipoId) url += '&equipo=' + encodeURIComponent(equipoId);
+
+    fetch(url, { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (st) {
             renderCardsAnalitica(st);
-            renderTendencia(st.tendencia);
+            renderTendencia(st.tendencia, st.equipoSeleccionado);
             renderTop(st.top);
             renderMttrMun(st.mttrMtbf);
             renderHeatmap(st.heatmap);
@@ -864,38 +863,88 @@ function cargarAnalitica() {
 }
 
 function renderCardsAnalitica(st) {
-    var g = st.mttrMtbf.global;
-    document.getElementById('cardsAnalitica').innerHTML =
-        '<div class="card rojo"><div class="num">' + g.incidentes + '</div><div class="lbl">Incidentes en el rango</div></div>' +
-        '<div class="card naranja"><div class="num">' + g.mttrMin + ' min</div><div class="lbl">MTTR (recuperación)</div></div>' +
-        '<div class="card verde"><div class="num">' + g.mtbfH + ' h</div><div class="lbl">MTBF (entre fallos)</div></div>';
+    if (st.equipoSeleccionado) {
+        var eq = st.equipoSeleccionado;
+        document.getElementById('cardsAnalitica').innerHTML =
+            '<div class="card" style="grid-column:span 3;border-left:4px solid #3498db;"><div class="num" style="font-size:16px;">🎯 ' + esc(eq.nombre) + '</div><div class="lbl">' + esc(eq.municipio) + '</div></div>' +
+            '<div class="card rojo"><div class="num">' + eq.incidentes + '</div><div class="lbl">Incidentes</div></div>' +
+            '<div class="card naranja"><div class="num">' + eq.mttrMin + ' min</div><div class="lbl">MTTR</div></div>' +
+            '<div class="card verde"><div class="num">' + eq.mtbfH + ' h</div><div class="lbl">MTBF</div></div>';
+    } else {
+        var g = st.mttrMtbf.global;
+        document.getElementById('cardsAnalitica').innerHTML =
+            '<div class="card rojo"><div class="num">' + g.incidentes + '</div><div class="lbl">Incidentes en el rango</div></div>' +
+            '<div class="card naranja"><div class="num">' + g.mttrMin + ' min</div><div class="lbl">MTTR (recuperación)</div></div>' +
+            '<div class="card verde"><div class="num">' + g.mtbfH + ' h</div><div class="lbl">MTBF (entre fallos)</div></div>';
+    }
 }
 
-function renderTendencia(t) {
+function renderTendencia(t, equipoSeleccionado) {
     if (chartTendencia) { chartTendencia.destroy(); chartTendencia = null; }
     var colores = ['#3498db', '#21c063', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#95a5a6', '#16a085', '#c0392b', '#2980b9', '#8e44ad'];
-    var datasets = [{
-        label: 'GLOBAL', data: t.global, borderColor: '#ffffff', backgroundColor: '#ffffff',
-        borderWidth: 3, tension: 0.3, pointRadius: 2
-    }];
-    var i = 0;
-    for (var m in t.porMunicipio) {
+    var datasets = [];
+
+    if (equipoSeleccionado) {
         datasets.push({
-            label: m, data: t.porMunicipio[m], borderColor: colores[i % colores.length],
-            backgroundColor: colores[i % colores.length], borderWidth: 1.5, tension: 0.3,
-            pointRadius: 1, spanGaps: true
+            label: equipoSeleccionado.nombre,
+            data: t.global,
+            borderColor: '#3498db',
+            backgroundColor: '#3498db',
+            borderWidth: 3,
+            tension: 0.3,
+            pointRadius: 3
         });
-        i++;
+    } else {
+        datasets.push({
+            label: 'GLOBAL',
+            data: t.global,
+            borderColor: '#ffffff',
+            backgroundColor: '#ffffff',
+            borderWidth: 3,
+            tension: 0.3,
+            pointRadius: 2
+        });
+        var i = 0;
+        for (var m in t.porMunicipio) {
+            datasets.push({
+                label: m,
+                data: t.porMunicipio[m],
+                borderColor: colores[i % colores.length],
+                backgroundColor: colores[i % colores.length],
+                borderWidth: 1.5,
+                tension: 0.3,
+                pointRadius: 1,
+                spanGaps: true
+            });
+            i++;
+        }
     }
+
     chartTendencia = new Chart(document.getElementById('chartTendencia'), {
         type: 'line',
         data: { labels: t.labels, datasets: datasets },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             scales: { y: { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } } },
             plugins: { legend: { position: 'right' } }
         }
     });
+}
+
+function poblarSelectorEquiposAnalitica() {
+    var sel = document.getElementById('selEquipoAnalitica');
+    if (!sel) return;
+
+    while (sel.options.length > 1) sel.remove(1);
+
+    for (var i = 0; i < equiposCache.length; i++) {
+        var e = equiposCache[i];
+        var op = document.createElement('option');
+        op.value = e.id;
+        op.textContent = e.nombre + ' (' + e.municipio + ')';
+        sel.appendChild(op);
+    }
 }
 
 function renderTop(top) {

@@ -1,9 +1,29 @@
-var STORAGE_KEY = 'rim_topologia';
-// 🔧 Limpieza única de la era pre-BD: la topología ya no vive en el navegador
-try { localStorage.removeItem(STORAGE_KEY); } catch (e) { }
+// 🔧 Sin localStorage: todo por query string
 var SVGNS = 'http://www.w3.org/2000/svg';
-var municipioId = localStorage.getItem('rim_municipio_actual');
-var nombreMunicipioActual = localStorage.getItem('rim_municipio_nombre') || '';
+
+// Parser manual de query string (compatible Firefox 45)
+function getQueryParams() {
+    var params = {};
+    var search = window.location.search;
+    if (!search || search.length < 2) return params;
+    var s = search.substring(1);
+    var pairs = s.split('&');
+    for (var i = 0; i < pairs.length; i++) {
+        var idx = pairs[i].indexOf('=');
+        if (idx > 0) {
+            var key = decodeURIComponent(pairs[i].substring(0, idx));
+            var val = decodeURIComponent(pairs[i].substring(idx + 1).replace(/\+/g, ' '));
+            params[key] = val;
+        }
+    }
+    return params;
+}
+
+var queryParams = getQueryParams();
+var municipioId = queryParams.municipio || '';
+var nombreMunicipioActual = queryParams.nombre || '';
+var enfocarIdInicial = queryParams.enfocar || '';
+
 var datos = null;
 var ruta = [];
 var seleccion = null;
@@ -35,7 +55,6 @@ var VEL_MBPS = {
 };
 
 var tiempoAnim = 0;
-
 var rolUsuario = null;
 
 function puedeEditar() {
@@ -83,6 +102,11 @@ function iniciarAnimacionConexiones() {
 function cargar() {
     document.getElementById('tituloMunicipio').textContent = 'Cargando...';
 
+    if (!municipioId) {
+        document.getElementById('tituloMunicipio').textContent = 'Selecciona un municipio desde el mapa';
+        return true;
+    }
+
     fetch('/api/topologia/db/' + encodeURIComponent(municipioId), { credentials: 'same-origin' })
         .then(function (r) {
             if (r.status === 404) {
@@ -108,10 +132,8 @@ function cargar() {
             cargarEstados();
             setInterval(cargarEstados, 30000);
 
-            var enfocarId = localStorage.getItem('rim_enfocar_equipo');
-            if (enfocarId) {
-                localStorage.removeItem('rim_enfocar_equipo');
-                setTimeout(function () { enfocarEquipo(enfocarId); }, 300);
+            if (enfocarIdInicial) {
+                setTimeout(function () { enfocarEquipo(enfocarIdInicial); }, 300);
             }
         })
         .catch(function (e) {
@@ -144,58 +166,6 @@ function guardar() {
             ind.textContent = '❌ Error al guardar';
             setTimeout(function () { ind.textContent = ''; }, 3000);
         });
-}
-
-function migrarPCsAntiguas() {
-    var cambios = false;
-
-    function recorrer(obj, padre) {
-        if (obj.tipo === 'switch' && obj.pcs_conectadas && obj.pcs_conectadas.length > 0) {
-            if (padre) {
-                padre.pcs = padre.pcs || [];
-                for (var i = 0; i < obj.pcs_conectadas.length; i++) {
-                    var old = obj.pcs_conectadas[i];
-                    var pc = {
-                        id: old.id,
-                        tipo: 'pc',
-                        descripcion: old.descripcion,
-                        nombre: old.descripcion,
-                        pr: old.pr,
-                        ip: old.ip,
-                        sistemas_atiende: old.sistemas_atiende,
-                        prioridad: 'baja',
-                        x: obj.x + obj.width + 50,
-                        y: obj.y + (i * 90),
-                        width: 80,
-                        height: 60
-                    };
-                    padre.pcs.push(pc);
-                    datos.conexiones.push({
-                        id: 'con-' + Date.now() + '-' + i,
-                        desde: obj.id,
-                        hasta: pc.id,
-                        tipo: 'Ethernet',
-                        velocidad: '1 Gbps',
-                        puertoDesde: old.puerto,
-                        puertoHasta: null
-                    });
-                }
-                cambios = true;
-            }
-            delete obj.pcs_conectadas;
-            cambios = true;
-        }
-        var hijos = hijosDe(obj);
-        for (var j = 0; j < hijos.length; j++) {
-            recorrer(hijos[j], obj);
-        }
-    }
-
-    for (var u = 0; u < datos.unidades.length; u++) {
-        recorrer(datos.unidades[u], null);
-    }
-
-    if (cambios) guardar();
 }
 
 function esContenedor(tipo) { return tipo === 'unidad' || tipo === 'edificio' || tipo === 'local'; }
@@ -246,9 +216,9 @@ function modalPegarManual(cb) {
     overlay.innerHTML = '<div style="background:#fff;padding:20px;border-radius:8px;width:420px;">' +
         '<p style="margin-top:0;">Pega aquí el texto y pulsa Enviar:</p>' +
         '<textarea id="txtPegarManual" rows="4" style="width:100%;box-sizing:border-box;"></textarea>' +
-        '<div style="display:flex;gap:10px;margin-top:10px;">' +
-        '<button id="btnEnviarPegar" class="btn-add" style="flex:1;">Enviar al terminal</button>' +
-        '<button id="btnCancelPegar" class="btn-del" style="flex:1;background:#555;">Cancelar</button></div></div>';
+        '<div style="margin-top:10px;">' +
+        '<button id="btnEnviarPegar" class="btn-add" style="margin-right:8px;">Enviar al terminal</button>' +
+        '<button id="btnCancelPegar" class="btn-del" style="background:#555;">Cancelar</button></div></div>';
     document.body.appendChild(overlay);
     document.getElementById('btnEnviarPegar').addEventListener('click', function () {
         var t = document.getElementById('txtPegarManual').value;
@@ -268,11 +238,10 @@ function abrirAccesoRemoto(tipo, ip, nombreSwitch, equipoId) {
         var htmlW = '<p style="margin-bottom:12px;">¿Por qué protocolo responde <strong>' + esc(nombreSwitch || ip) + '</strong>?</p>';
         htmlW += '<label>Puerto (opcional, ej: 8080)</label>';
         htmlW += '<input type="text" id="webPort" placeholder="vacío = puerto estándar">';
-        htmlW += '<div style="display:flex;gap:10px;margin-top:14px;">';
-        htmlW += '<button class="btn-add" id="btnWebHttps" style="flex:1;background:#27ae60;">🔒 Abrir HTTPS</button>';
-        htmlW += '<button class="btn-add" id="btnWebHttp" style="flex:1;background:#2980b9;">🌐 Abrir HTTP</button>';
+        htmlW += '<div style="margin-top:14px;">';
+        htmlW += '<button class="btn-add" id="btnWebHttps" style="background:#27ae60;margin-right:8px;">🔒 Abrir HTTPS</button>';
+        htmlW += '<button class="btn-add" id="btnWebHttp" style="background:#2980b9;">🌐 Abrir HTTP</button>';
         htmlW += '</div>';
-        htmlW += '<p style="margin-top:12px;color:#555;font-size:12px;">Si la pestaña queda en blanco o «Esperando…», ciérrala y prueba el otro protocolo.</p>';
         htmlW += '<button class="btn-del" id="btnCerrarWeb" style="margin-top:10px;background:#555;">Cerrar</button>';
         abrirModal('🌐 Admin Web de ' + esc(nombreSwitch || ip), htmlW);
 
@@ -296,7 +265,7 @@ function abrirAccesoRemoto(tipo, ip, nombreSwitch, equipoId) {
     if (tipo === 'telnet') {
         var cmdT = 'telnet ' + ip;
         var modalHtmlT = '<p>Copia este comando:</p>';
-        modalHtmlT += '<div style="background:#1e1e1e;color:#0f0;padding:12px;font-family:monospace;border-radius:4px;user-select:all;">' + esc(cmdT) + '</div>';
+        modalHtmlT += '<div style="background:#1e1e1e;color:#0f0;padding:12px;font-family:monospace;border-radius:4px;">' + esc(cmdT) + '</div>';
         modalHtmlT += '<button class="btn-add" id="btnCopiarCmdT" style="margin-top:12px;">📋 Copiar</button>';
         modalHtmlT += '<button class="btn-del" id="btnCerrarCmdT" style="margin-top:8px;background:#555;">Cerrar</button>';
         abrirModal('📟 Telnet a ' + esc(nombreSwitch || ip), modalHtmlT);
@@ -317,9 +286,9 @@ function abrirConsolaSSH(ip, nombreSwitch, equipoId) {
     loginHtml += '<label>Contraseña:</label>';
     loginHtml += '<input type="password" id="sshPass" autocomplete="off">';
     loginHtml += '<p id="sshMsgErr" style="color:red;font-size:12px;margin-top:10px;"></p>';
-    loginHtml += '<div style="display:flex;gap:10px;margin-top:18px;">';
-    loginHtml += '<button class="btn-add" id="btnConectarSSH" style="flex:1;">Conectar</button>';
-    loginHtml += '<button class="btn-del" id="btnCancelarSSH" style="flex:1;background:#555;">Cancelar</button>';
+    loginHtml += '<div style="margin-top:18px;">';
+    loginHtml += '<button class="btn-add" id="btnConectarSSH" style="margin-right:8px;">Conectar</button>';
+    loginHtml += '<button class="btn-del" id="btnCancelarSSH" style="background:#555;">Cancelar</button>';
     loginHtml += '</div></div>';
 
     abrirModal('SSH — ' + esc(nombreSwitch), loginHtml);
@@ -551,14 +520,6 @@ function validarIP(ip) {
         if (n < 0 || n > 255) return false;
     }
     return true;
-}
-
-function mismaSubred(ip1, ip2) {
-    if (!ip1 || !ip2) return false;
-    var p1 = ip1.split('.');
-    var p2 = ip2.split('.');
-    if (p1.length !== 4 || p2.length !== 4) return false;
-    return p1[0] === p2[0] && p1[1] === p2[1] && p1[2] === p2[2];
 }
 
 function ipYaExiste(ip, excluirId) {
@@ -826,6 +787,18 @@ function crearNodo(obj) {
         el.appendChild(dot);
     }
 
+    // 🔧 NUEVO Parte 3B: Indicador visual de conexión global para equipos de red
+    if (esEquipo(obj.tipo)) {
+        var dotGlobal = document.createElement('span');
+        dotGlobal.className = 'conexion-global-indicador';
+        dotGlobal.textContent = '🔗';
+        dotGlobal.title = 'Puede tener conexión a otro municipio';
+        dotGlobal.style.marginLeft = '4px';
+        dotGlobal.style.fontSize = '14px';
+        dotGlobal.style.cursor = 'help';
+        el.appendChild(dotGlobal);
+    }
+
     el.addEventListener('mousedown', function (e) {
         e.stopPropagation();
 
@@ -956,6 +929,23 @@ function puntoBorde(rep, cx, cy, tx, ty) {
     return { x: cx + dx * t, y: cy + dy * t };
 }
 
+function calcularIndiceConexion(conId, repAId, repBId) {
+    var claves = [];
+    for (var i = 0; i < datos.conexiones.length; i++) {
+        var c = datos.conexiones[i];
+        var rA = representanteVisible(c.desde);
+        var rB = representanteVisible(c.hasta);
+        if (!rA || !rB) continue;
+        var k1 = rA.id < rB.id ? rA.id + '|' + rB.id : rB.id + '|' + rA.id;
+        var k2 = repAId < repBId ? repAId + '|' + repBId : repBId + '|' + repAId;
+        if (k1 === k2) {
+            if (c.id === conId) return claves.length;
+            claves.push(c.id);
+        }
+    }
+    return 0;
+}
+
 function dibujarConexiones() {
     var svg = document.getElementById('capa-conexiones');
     if (!svg) return;
@@ -1000,9 +990,26 @@ function dibujarConexiones() {
 
                 var grosor = (con.id === conexionSeleccionada) ? 8 : 6;
 
+                var offsetX = 0, offsetY = 0;
+                if (repA && repB) {
+                    var indice = calcularIndiceConexion(con.id, repA.id, repB.id);
+                    if (indice > 0) {
+                        var dx = pB.x - pA.x;
+                        var dy = pB.y - pA.y;
+                        var len = Math.sqrt(dx * dx + dy * dy);
+                        if (len > 0) {
+                            var perpX = -dy / len;
+                            var perpY = dx / len;
+                            var separacion = 10 * indice;
+                            offsetX = perpX * separacion;
+                            offsetY = perpY * separacion;
+                        }
+                    }
+                }
+
                 var line = document.createElementNS(SVGNS, 'line');
-                line.setAttribute('x1', pA.x); line.setAttribute('y1', pA.y);
-                line.setAttribute('x2', pB.x); line.setAttribute('y2', pB.y);
+                line.setAttribute('x1', pA.x + offsetX); line.setAttribute('y1', pA.y + offsetY);
+                line.setAttribute('x2', pB.x + offsetX); line.setAttribute('y2', pB.y + offsetY);
                 line.setAttribute('class', 'linea-conexion');
                 line.setAttribute('data-con', con.id);
                 line.setAttribute('stroke', color);
@@ -1025,16 +1032,16 @@ function dibujarConexiones() {
                         c.setAttribute('data-offset', (p / 3).toFixed(2));
                         c.setAttribute('fill', '#ffffff');
                         c.setAttribute('pointer-events', 'none');
-                        c.setAttribute('cx', pA.x);
-                        c.setAttribute('cy', pA.y);
+                        c.setAttribute('cx', pA.x + offsetX);
+                        c.setAttribute('cy', pA.y + offsetY);
                         if (extA || extB) c.setAttribute('opacity', '0.6');
                         svg.appendChild(c);
                     }
                 }
 
                 if (caido) {
-                    var mx = (pA.x + pB.x) / 2;
-                    var my = (pA.y + pB.y) / 2;
+                    var mx = (pA.x + pB.x) / 2 + offsetX;
+                    var my = (pA.y + pB.y) / 2 + offsetY;
                     var xmark = document.createElementNS(SVGNS, 'text');
                     xmark.setAttribute('x', mx);
                     xmark.setAttribute('y', my + 6);
@@ -1047,9 +1054,36 @@ function dibujarConexiones() {
                     svg.appendChild(xmark);
                 }
 
+                if (con.puertoDesde != null && repA) {
+                    var lblA = document.createElementNS(SVGNS, 'text');
+                    lblA.setAttribute('x', pA.x + offsetX);
+                    lblA.setAttribute('y', pA.y + offsetY - 8);
+                    lblA.setAttribute('text-anchor', 'middle');
+                    lblA.setAttribute('fill', '#fff');
+                    lblA.setAttribute('font-size', '10');
+                    lblA.setAttribute('font-weight', 'bold');
+                    lblA.setAttribute('pointer-events', 'none');
+                    lblA.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
+                    lblA.textContent = 'p' + con.puertoDesde;
+                    svg.appendChild(lblA);
+                }
+                if (con.puertoHasta != null && repB) {
+                    var lblB = document.createElementNS(SVGNS, 'text');
+                    lblB.setAttribute('x', pB.x + offsetX);
+                    lblB.setAttribute('y', pB.y + offsetY - 8);
+                    lblB.setAttribute('text-anchor', 'middle');
+                    lblB.setAttribute('fill', '#fff');
+                    lblB.setAttribute('font-size', '10');
+                    lblB.setAttribute('font-weight', 'bold');
+                    lblB.setAttribute('pointer-events', 'none');
+                    lblB.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
+                    lblB.textContent = 'p' + con.puertoHasta;
+                    svg.appendChild(lblB);
+                }
+
                 var hit = document.createElementNS(SVGNS, 'line');
-                hit.setAttribute('x1', pA.x); hit.setAttribute('y1', pA.y);
-                hit.setAttribute('x2', pB.x); hit.setAttribute('y2', pB.y);
+                hit.setAttribute('x1', pA.x + offsetX); hit.setAttribute('y1', pA.y + offsetY);
+                hit.setAttribute('x2', pB.x + offsetX); hit.setAttribute('y2', pB.y + offsetY);
                 hit.setAttribute('class', 'linea-hit');
                 hit.setAttribute('stroke', 'transparent');
                 hit.setAttribute('stroke-width', '16');
@@ -1195,9 +1229,9 @@ function mostrarFormulario(tipo, padre) {
         });
     }
 
-    var botones = '<div style="display:flex;gap:10px;margin-top:20px;">' +
-        '<button class="btn-add" id="btnConfirmarCrear" style="flex:1;">Crear</button>' +
-        '<button class="btn-del" id="btnCancelarCrear" style="flex:1;">Cancelar</button>' +
+    var botones = '<div style="margin-top:20px;">' +
+        '<button class="btn-add" id="btnConfirmarCrear" style="margin-right:8px;">Crear</button>' +
+        '<button class="btn-del" id="btnCancelarCrear">Cancelar</button>' +
         '</div>';
     document.getElementById('modalCuerpo').innerHTML += botones;
 
@@ -1389,9 +1423,9 @@ function mostrarFormularioConexion(a, b) {
 
     abrirModal('🔌 NUEVA CONEXIÓN', html);
 
-    var botones = '<div style="display:flex;gap:10px;margin-top:20px;">' +
-        '<button class="btn-add" id="btnConfirmarCon" style="flex:1;">Crear conexión</button>' +
-        '<button class="btn-del" id="btnCancelarCon" style="flex:1;">Cancelar</button>' +
+    var botones = '<div style="margin-top:20px;">' +
+        '<button class="btn-add" id="btnConfirmarCon" style="margin-right:8px;">Crear conexión</button>' +
+        '<button class="btn-del" id="btnCancelarCon">Cancelar</button>' +
         '</div>';
     document.getElementById('modalCuerpo').innerHTML += botones;
 
@@ -1414,7 +1448,6 @@ function mostrarFormularioConexion(a, b) {
                 err.textContent = 'El puerto ' + puerto + ' ya está ocupado por otra conexión en ' + (otro.descripcion || otro.nombre) + '.';
                 return;
             }
-            // 🔧 REMOVIDO: No validamos subred porque las PCs toman gateway del backbone
             if (otro.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[otro.velocidad_enlace || '100 Gbps']) {
                 err.textContent = 'Velocidad ' + vel + ' excede la del switch (' + otro.velocidad_enlace + ').';
                 return;
@@ -1544,9 +1577,9 @@ function mostrarModalEdicion(obj) {
             '<option value="ninguno"' + (obj.monitoreo === 'ninguno' ? ' selected' : '') + '>No monitorear (almacén / inactivo)</option></select>';
     }
 
-    html += '<div style="display:flex;gap:10px;margin-top:20px;">' +
-        '<button class="btn-add" id="btnActualizar" style="flex:1;">💾 Actualizar</button>' +
-        '<button class="btn-del" id="btnEliminarModal" style="flex:1;">🗑️ Eliminar</button>' +
+    html += '<div style="margin-top:20px;">' +
+        '<button class="btn-add" id="btnActualizar" style="margin-right:8px;">💾 Actualizar</button>' +
+        '<button class="btn-del" id="btnEliminarModal">🗑️ Eliminar</button>' +
         '</div>';
     html += '<button class="btn-del" id="btnCerrarModal" style="margin-top:10px;background:#555;">Cerrar sin guardar</button>';
 
@@ -1582,7 +1615,6 @@ function mostrarModalEdicion(obj) {
                     if (!validarIP(nIP)) { err.textContent = 'IP inválida.'; return; }
                     if (ipYaExiste(nIP, obj.id)) { err.textContent = 'La IP ' + nIP + ' ya está en uso.'; return; }
                 }
-                // 🔧 REMOVIDO: No validamos subred porque las PCs toman gateway del backbone
                 cambios.ip = nIP;
             }
         }
@@ -1925,13 +1957,13 @@ function mostrarPanel(obj) {
             var tieneGestion = puedeEditar() && obj.ip && obj.tipo_gestion && obj.tipo_gestion !== 'No gestionable';
             if (tieneGestion) {
                 var nombreSwitch = obj.descripcion || obj.nombre || '';
-                html += '<div style="display:flex;gap:8px;margin-top:10px;">';
+                html += '<div style="margin-top:10px;">';
                 if (obj.tipo_gestion === 'SSH') {
-                    html += '<button class="btn-add" id="btnAbrirSSH" style="flex:1;background:#2c3e50;">🔐 Abrir SSH</button>';
+                    html += '<button class="btn-add" id="btnAbrirSSH" style="background:#2c3e50;margin-right:8px;">🔐 Abrir SSH</button>';
                 } else if (obj.tipo_gestion === 'Web') {
-                    html += '<button class="btn-add" id="btnAbrirWeb" style="flex:1;background:#27ae60;">🌐 Abrir Admin Web</button>';
+                    html += '<button class="btn-add" id="btnAbrirWeb" style="background:#27ae60;margin-right:8px;">🌐 Abrir Admin Web</button>';
                 } else if (obj.tipo_gestion === 'Telnet') {
-                    html += '<button class="btn-add" id="btnAbrirTelnet" style="flex:1;background:#8e44ad;">📟 Abrir Telnet</button>';
+                    html += '<button class="btn-add" id="btnAbrirTelnet" style="background:#8e44ad;margin-right:8px;">📟 Abrir Telnet</button>';
                 }
                 html += '</div>';
             }
@@ -1947,6 +1979,32 @@ function mostrarPanel(obj) {
     }
 
     document.getElementById('panel-contenido').innerHTML = html;
+
+    // 🔧 NUEVO Parte 3B: Mostrar conexiones globales del equipo seleccionado
+    if (esEquipo(obj.tipo)) {
+        fetch('/api/topologia/conexiones-equipo/' + encodeURIComponent(obj.id), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (globals) {
+                if (!globals || !globals.length) return;
+                var panel = document.getElementById('panel-contenido');
+                if (!panel) return;
+                var bloque = '<div style="margin-top:12px;padding:10px;background:rgba(255,159,28,0.15);border-left:4px solid #ff9f1c;border-radius:4px;">';
+                bloque += '<p style="margin:0 0 6px 0;"><strong>🔗 Conectado a otros municipios:</strong></p>';
+                bloque += '<ul style="margin:0;padding-left:20px;font-size:12px;">';
+                for (var g = 0; g < globals.length; g++) {
+                    var c = globals[g];
+                    var esOrigen = c.desde_id === obj.id;
+                    var otroMun = esOrigen ? c.hasta_municipio_nombre : c.desde_municipio_nombre;
+                    var otroMunId = esOrigen ? c.hasta_municipio_id : c.desde_municipio_id;
+                    var otroEq = esOrigen ? c.hasta_id : c.desde_id;
+                    bloque += '<li>' + esc(otroMun) + ' <button class="btn b-azul" style="padding:2px 8px;font-size:11px;" ' +
+                      'onclick="window.open(\'/private/topologia.html?municipio=' + encodeURIComponent(otroMunId) + '&enfocar=' + encodeURIComponent(otroEq) + '\', \'_blank\')">Ver →</button></li>';
+                }
+                bloque += '</ul></div>';
+                panel.insertAdjacentHTML('beforeend', bloque);
+            })
+            .catch(function () { });
+    }
 
     var filasEq = document.querySelectorAll('#panel-contenido .fila-equipo');
     for (var fe2 = 0; fe2 < filasEq.length; fe2++) {
@@ -2118,9 +2176,9 @@ function recogerEquiposDe(obj, rutaPadres) {
 function abrirModalDetallesEquipo(e) {
     function filaD(k, v) {
         if (v === null || v === undefined || v === '') return '';
-        return '<div style="display:flex;border-bottom:1px solid #eee;padding:6px 0;">' +
-            '<span style="width:40%;color:#555;font-size:12px;">' + k + '</span>' +
-            '<span style="width:60%;font-size:13px;font-weight:600;">' + esc(String(v)) + '</span></div>';
+        return '<div style="border-bottom:1px solid #eee;padding:6px 0;">' +
+            '<span style="display:inline-block;width:40%;color:#555;font-size:12px;">' + k + '</span>' +
+            '<span style="display:inline-block;width:58%;font-size:13px;font-weight:600;">' + esc(String(v)) + '</span></div>';
     }
     var html = '<p style="font-size:11px;color:#555;">👁️ Vista de solo lectura (todos los roles).</p>';
     html += filaD('Tipo', e.tipo);
@@ -2194,7 +2252,7 @@ function exportarDesglose(fmt) {
             lineas.push(row.join(';'));
         });
         descargarArchivoTopo(lineas.join('\n'), base + '.dat', 'text/csv;charset=utf-8');
-        var ctl = '-- Archivo de control SQL*Loader (fragmento de topología)\nOPTIONS (SKIP=1, ROWS=1000)\nLOAD DATA\nCHARACTERSET UTF8\nINFILE \'' + base + '.dat\'\nINTO TABLE INVENTARIO_FISICO_RIM\nFIELDS TERMINATED BY ";" OPTIONALLY ENCLOSED BY \'"\'\nTRAILING NULLCOLS\n(\n  ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION DATE "YYYY-MM-DD", UBICACION, MUNICIPIO\n)\n';
+        var ctl = '-- Archivo de control SQL*Loader\nOPTIONS (SKIP=1, ROWS=1000)\nLOAD DATA\nCHARACTERSET UTF8\nINFILE \'' + base + '.dat\'\nINTO TABLE INVENTARIO_FISICO_RIM\nFIELDS TERMINATED BY ";" OPTIONALLY ENCLOSED BY \'"\'\nTRAILING NULLCOLS\n(\n  ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION DATE "YYYY-MM-DD", UBICACION, MUNICIPIO\n)\n';
         setTimeout(function () { descargarArchivoTopo(ctl, 'inventario_fragmento.ctl', 'text/plain;charset=utf-8'); }, 300);
         return;
     }
@@ -2214,10 +2272,10 @@ function exportarDesglose(fmt) {
 
 function abrirModalExportar() {
     var html = '<p style="margin-bottom:15px;color:#555;">Elige el formato para exportar <strong>' + desgloseActual.length + ' equipo(s)</strong> de este contenedor:</p>';
-    html += '<div style="display:flex;flex-direction:column;gap:10px;">';
-    html += '<button class="btn-add" id="optXlsx" style="padding:12px;text-align:left;">📥 <strong>Excel (.xlsx)</strong><br><span style="font-size:11px;color:#666;">Para análisis en Excel, LibreOffice, Google Sheets</span></button>';
-    html += '<button class="btn-add" id="optOracle" style="padding:12px;text-align:left;">🗄️ <strong>Oracle SQL*Loader (.dat + .ctl)</strong><br><span style="font-size:11px;color:#666;">Para importar a Oracle con SQL*Loader</span></button>';
-    html += '<button class="btn-add" id="optSql" style="padding:12px;text-align:left;">📜 <strong>SQL (.sql)</strong><br><span style="font-size:11px;color:#666;">Script INSERT para PostgreSQL, Oracle, MySQL</span></button>';
+    html += '<div>';
+    html += '<button class="btn-add" id="optXlsx" style="padding:12px;width:100%;text-align:left;margin-bottom:8px;">📥 <strong>Excel (.xlsx)</strong><br><span style="font-size:11px;color:#666;">Para análisis en Excel, LibreOffice, Google Sheets</span></button>';
+    html += '<button class="btn-add" id="optOracle" style="padding:12px;width:100%;text-align:left;margin-bottom:8px;">🗄️ <strong>Oracle SQL*Loader (.dat + .ctl)</strong><br><span style="font-size:11px;color:#666;">Para importar a Oracle con SQL*Loader</span></button>';
+    html += '<button class="btn-add" id="optSql" style="padding:12px;width:100%;text-align:left;margin-bottom:8px;">📜 <strong>SQL (.sql)</strong><br><span style="font-size:11px;color:#666;">Script INSERT para PostgreSQL, Oracle, MySQL</span></button>';
     html += '</div>';
     html += '<button class="btn-del" id="btnCerrarExp" style="margin-top:15px;background:#555;width:100%;">Cancelar</button>';
 

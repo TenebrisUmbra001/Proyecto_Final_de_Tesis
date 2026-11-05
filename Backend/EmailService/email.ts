@@ -1,3 +1,4 @@
+//email.ts
 import nodemailer from 'nodemailer';
 
 const ZIMBRA_CONFIG = {
