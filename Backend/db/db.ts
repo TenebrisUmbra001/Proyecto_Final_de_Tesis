@@ -119,9 +119,21 @@ export async function getContactos() {
 }
 
 export async function getContactosParaPrioridad(prio: string) {
+    // 🔧 LÓGICA CORREGIDA:
+    // prioridad_minima = 'alta'  → solo recibe alertas de prioridad 'alta'
+    // prioridad_minima = 'media' → recibe alertas de prioridad 'media' y 'alta'
+    // prioridad_minima = 'baja'  → recibe todas (baja, media, alta)
+    
     const r = await pool.query(
-        `SELECT * FROM contactos_notificacion WHERE activo = TRUE AND
-         (($1 = 'alta') OR ($1 = 'media' AND prioridad_minima IN ('media','baja')))`, [prio]);
+        `SELECT * FROM contactos_notificacion 
+         WHERE activo = TRUE 
+         AND (
+             (prioridad_minima = 'baja') OR
+             (prioridad_minima = 'media' AND $1 IN ('media', 'alta')) OR
+             (prioridad_minima = 'alta' AND $1 = 'alta')
+         )`, 
+        [prio]
+    );
     return r.rows;
 }
 

@@ -65,10 +65,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('filtroTipo').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroEstado').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
 
-    document.getElementById('btnAplicarAnalitica').addEventListener('click', function () {
-        poblarSelectorEquiposAnalitica();
-        cargarAnalitica();
-    });
+    document.getElementById('btnAplicarAnalitica').addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    poblarSelectorEquiposAnalitica();
+    cargarAnalitica();
+    return false;
+});
 
     document.getElementById('btnNuevoContacto').addEventListener('click', function () { abrirModalContacto(null); });
     document.getElementById('btnNuevoUsuario').addEventListener('click', function () { abrirModalUsuario(null); });
