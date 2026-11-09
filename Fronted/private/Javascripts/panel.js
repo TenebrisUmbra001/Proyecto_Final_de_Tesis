@@ -65,13 +65,32 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('filtroTipo').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
     document.getElementById('filtroEstado').addEventListener('change', function () { paginaEquipos = 1; renderEquipos(); });
 
-    document.getElementById('btnAplicarAnalitica').addEventListener('click', function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    poblarSelectorEquiposAnalitica();
-    cargarAnalitica();
-    return false;
-});
+    // 🔧 BLINDAJE GLOBAL: impide que CUALQUIER submit del panel recargue la página
+    document.addEventListener('submit', function (e) {
+        e.preventDefault();
+        return false;
+    }, true);
+
+    // 🔧 Botón Aplicar: fuerza type=button y blinda el click
+    var btnAp = document.getElementById('btnAplicarAnalitica');
+    if (btnAp) {
+        btnAp.setAttribute('type', 'button');
+        btnAp.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            poblarSelectorEquiposAnalitica();
+            cargarAnalitica();
+            return false;
+        });
+    }
+
+    // 🔧 Filtros auto-reactivos: la analítica se recarga sola al cambiar cualquiera
+    var selEq = document.getElementById('selEquipoAnalitica');
+    if (selEq) selEq.addEventListener('change', function () { cargarAnalitica(); });
+    var selD = document.getElementById('selDias');
+    if (selD) selD.addEventListener('change', function () { cargarAnalitica(); });
+    var selG = document.getElementById('selGran');
+    if (selG) selG.addEventListener('change', function () { cargarAnalitica(); });
 
     document.getElementById('btnNuevoContacto').addEventListener('click', function () { abrirModalContacto(null); });
     document.getElementById('btnNuevoUsuario').addEventListener('click', function () { abrirModalUsuario(null); });
@@ -220,7 +239,6 @@ function abrirModalEquipo(e) {
     if ((b = document.getElementById('mWeb'))) b.onclick = function () { abrirWeb(e.ip, e.nombre); };
     if ((b = document.getElementById('mTel'))) b.onclick = function () { abrirModal('📟 Telnet', '<p>Ejecuta:</p><div style="background:#1e1e1e;color:#0f0;padding:10px;font-family:monospace;">telnet ' + esc(e.ip) + '</div>'); };
     
-    // 🔧 CORREGIDO: Sin localStorage, todo por query string
     if ((b = document.getElementById('mMapa'))) b.onclick = function () {
         window.open('/private/topologia.html?municipio=' + encodeURIComponent(e.municipioId) + '&nombre=' + encodeURIComponent(e.municipio) + '&enfocar=' + encodeURIComponent(e.id), '_blank');
     };
@@ -621,14 +639,13 @@ function cargarConfigs() {
         html += '</table>';
         document.getElementById('tablaConfigs').innerHTML = html;
 
-               var btns = document.querySelectorAll('#tablaConfigs [data-cfg]');
+        var btns = document.querySelectorAll('#tablaConfigs [data-cfg]');
         for (var b = 0; b < btns.length; b++) {
             btns[b].addEventListener('click', function () {
                 var cfgId = this.getAttribute('data-cfg');
                 fetch('/api/admin/configs/' + cfgId, { credentials: 'same-origin' })
                     .then(function (r) { return r.json(); })
                     .then(function (c) {
-                        // 🔧 NUEVO: Modal con botón de cerrar explícito y pre-formateo perfecto
                         var html = '<p style="color:#9fb3c8;font-size:12px;margin-bottom:8px;">' +
                             '📊 Tamaño: ' + c.tamanio + ' bytes · IP: ' + esc(c.ip) + '</p>' +
                             '<pre style="background:#1e1e1e;color:#0f0;padding:12px;max-height:65vh;overflow:auto;font-size:11px;white-space:pre;font-family:Consolas,monospace;line-height:1.3;">' + esc(c.configuracion) + '</pre>' +

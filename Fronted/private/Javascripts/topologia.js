@@ -72,7 +72,8 @@ function aplicarPermisos() {
 }
 
 function iniciarAnimacionConexiones() {
-    setInterval(function () {
+    // 🔧 FIX: Retornar el ID del interval para poder limpiarlo después
+    return setInterval(function () {
         tiempoAnim += 0.012;
         if (tiempoAnim > 1) tiempoAnim = 0;
 
@@ -128,9 +129,14 @@ function cargar() {
             document.getElementById('tituloMunicipio').textContent = 'Información : ' + datos.nombre;
 
             renderizar();
-            iniciarAnimacionConexiones();
+            
+            // 🔧 FIX: Limpiar intervals anteriores antes de crear nuevos (evita memory leaks)
+            if (window.intervalAnimacion) clearInterval(window.intervalAnimacion);
+            if (window.intervalEstados) clearInterval(window.intervalEstados);
+            
+            window.intervalAnimacion = iniciarAnimacionConexiones();
             cargarEstados();
-            setInterval(cargarEstados, 30000);
+            window.intervalEstados = setInterval(cargarEstados, 30000);
 
             if (enfocarIdInicial) {
                 setTimeout(function () { enfocarEquipo(enfocarIdInicial); }, 300);
@@ -967,184 +973,194 @@ function dibujarConexiones() {
     if (!svg) return;
     while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-    // 🔧 AGRUPAR conexiones por par de nodos para calcular offset centrado
-    var grupos = {};
+    // 🔧 PASO 1: resolver geometría de CADA conexión (RESTAURADO: extremos fuera de vista)
+    var preparadas = [];
     for (var i = 0; i < datos.conexiones.length; i++) {
         var con = datos.conexiones[i];
         var repA = representanteVisible(con.desde);
         var repB = representanteVisible(con.hasta);
-        if (!repA || !repB) continue;
-        if (repA.id === repB.id) continue;
-        
-        var clave = repA.id < repB.id ? (repA.id + '|' + repB.id) : (repB.id + '|' + repA.id);
-        if (!grupos[clave]) grupos[clave] = [];
-        grupos[clave].push(con);
-    }
 
-    var dibujadas = 0;
+        if (repA && repB && repA.id === repB.id) continue;
 
-    // 🔧 Dibujar cada GRUPO con offset centrado (las líneas salen paralelas separadas)
-    for (var clave in grupos) {
-        var grupo = grupos[clave];
-        var repA = representanteVisible(grupo[0].desde);
-        var repB = representanteVisible(grupo[0].hasta);
-        if (!repA || !repB) continue;
+        var pA = repA ? puntoCentro(repA) : null;
+        var pB = repB ? puntoCentro(repB) : null;
 
-        var pA = puntoCentro(repA);
-        var pB = puntoCentro(repB);
+        if (!pA && !pB) continue;
+
+        var extA = false, extB = false;
+        if (!pA && pB) { pA = { x: 0, y: pB.y }; extA = true; }
+        if (!pB && pA) { pB = { x: 0, y: pA.y }; extB = true; }
         if (!pA || !pB) continue;
 
-        // Bordes (ajuste fino)
         var cA = { x: pA.x, y: pA.y };
         var cB = { x: pB.x, y: pB.y };
-        pA = puntoBorde(repA, cA.x, cA.y, cB.x, cB.y);
-        pB = puntoBorde(repB, cB.x, cB.y, cA.x, cA.y);
+        if (repA) pA = puntoBorde(repA, cA.x, cA.y, cB.x, cB.y);
+        if (repB) pB = puntoBorde(repB, cB.x, cB.y, cA.x, cA.y);
 
-        // Vector perpendicular para separar las líneas
-        var dx = pB.x - pA.x;
-        var dy = pB.y - pA.y;
-        var len = Math.sqrt(dx * dx + dy * dy);
-        var perpX = len > 0 ? -dy / len : 0;
-        var perpY = len > 0 ? dx / len : 0;
-        var separacion = 12; // Pixeles entre cada línea paralela
+        var kA = repA ? repA.id : 'EXT';
+        var kB = repB ? repB.id : 'EXT';
+        var clave = kA < kB ? kA + '|' + kB : kB + '|' + kA;
 
-        // 🔧 Dibujar CADA conexión del grupo con su offset centrado
-        for (var j = 0; j < grupo.length; j++) {
-            (function (con, indice, total) {
-                try {
-                    // Offset centrado: si hay 3 líneas, van en -12, 0, +12
-                    var offset = (indice - (total - 1) / 2) * separacion;
-                    var offsetX = perpX * offset;
-                    var offsetY = perpY * offset;
-
-                    var objA = buscarObjPorId(con.desde);
-                    var objB = buscarObjPorId(con.hasta);
-
-                    var stA = estadoDe(con.desde);
-                    var stB = estadoDe(con.hasta);
-                    var caido = (stA === 'offline' || stB === 'offline');
-                    var degradado = (!caido) && (stA === 'degradado' || stB === 'degradado');
-
-                    var color = con.tipo === 'FO' ? '#ff9f1c' : '#70e000';
-                    if (degradado) color = '#f39c12';
-                    if (caido) color = '#e74c3c';
-
-                    var grosor = (con.id === conexionSeleccionada) ? 8 : 6;
-
-                    // --- Línea principal ---
-                    var line = document.createElementNS(SVGNS, 'line');
-                    line.setAttribute('x1', pA.x + offsetX); line.setAttribute('y1', pA.y + offsetY);
-                    line.setAttribute('x2', pB.x + offsetX); line.setAttribute('y2', pB.y + offsetY);
-                    line.setAttribute('class', 'linea-conexion');
-                    line.setAttribute('data-con', con.id);
-                    line.setAttribute('stroke', color);
-                    line.setAttribute('stroke-width', grosor);
-                    line.setAttribute('stroke-linecap', 'round');
-                    line.setAttribute('pointer-events', 'none');
-                    if (caido) line.setAttribute('stroke-dasharray', '6 8');
-                    else if (degradado) line.setAttribute('stroke-dasharray', '12 6');
-                    svg.appendChild(line);
-
-                    // --- Paquetes animados (si no está caída) ---
-                    if (!caido) {
-                        for (var p = 0; p < 3; p++) {
-                            var c = document.createElementNS(SVGNS, 'circle');
-                            c.setAttribute('r', '3.5');
-                            c.setAttribute('class', 'paquete');
-                            c.setAttribute('data-con', con.id);
-                            c.setAttribute('data-offset', (p / 3).toFixed(2));
-                            c.setAttribute('fill', '#ffffff');
-                            c.setAttribute('pointer-events', 'none');
-                            c.setAttribute('cx', pA.x + offsetX);
-                            c.setAttribute('cy', pA.y + offsetY);
-                            svg.appendChild(c);
-                        }
-                    }
-
-                    // --- Marca X si está caída ---
-                    if (caido) {
-                        var mx = (pA.x + pB.x) / 2 + offsetX;
-                        var my = (pA.y + pB.y) / 2 + offsetY;
-                        var xmark = document.createElementNS(SVGNS, 'text');
-                        xmark.setAttribute('x', mx);
-                        xmark.setAttribute('y', my + 6);
-                        xmark.setAttribute('text-anchor', 'middle');
-                        xmark.setAttribute('fill', '#e74c3c');
-                        xmark.setAttribute('font-size', '20');
-                        xmark.setAttribute('font-weight', 'bold');
-                        xmark.setAttribute('pointer-events', 'none');
-                        xmark.textContent = '✕';
-                        svg.appendChild(xmark);
-                    }
-
-                    // --- Etiquetas de puerto ---
-                    if (con.puertoDesde != null) {
-                        var lblA = document.createElementNS(SVGNS, 'text');
-                        lblA.setAttribute('x', pA.x + offsetX);
-                        lblA.setAttribute('y', pA.y + offsetY - 8);
-                        lblA.setAttribute('text-anchor', 'middle');
-                        lblA.setAttribute('fill', '#fff');
-                        lblA.setAttribute('font-size', '10');
-                        lblA.setAttribute('font-weight', 'bold');
-                        lblA.setAttribute('pointer-events', 'none');
-                        lblA.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
-                        lblA.textContent = 'p' + con.puertoDesde;
-                        svg.appendChild(lblA);
-                    }
-                    if (con.puertoHasta != null) {
-                        var lblB = document.createElementNS(SVGNS, 'text');
-                        lblB.setAttribute('x', pB.x + offsetX);
-                        lblB.setAttribute('y', pB.y + offsetY - 8);
-                        lblB.setAttribute('text-anchor', 'middle');
-                        lblB.setAttribute('fill', '#fff');
-                        lblB.setAttribute('font-size', '10');
-                        lblB.setAttribute('font-weight', 'bold');
-                        lblB.setAttribute('pointer-events', 'none');
-                        lblB.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
-                        lblB.textContent = 'p' + con.puertoHasta;
-                        svg.appendChild(lblB);
-                    }
-
-                    // --- Línea de click (hit area) ---
-                    var hit = document.createElementNS(SVGNS, 'line');
-                    hit.setAttribute('x1', pA.x + offsetX); hit.setAttribute('y1', pA.y + offsetY);
-                    hit.setAttribute('x2', pB.x + offsetX); hit.setAttribute('y2', pB.y + offsetY);
-                    hit.setAttribute('class', 'linea-hit');
-                    hit.setAttribute('stroke', 'transparent');
-                    hit.setAttribute('stroke-width', '16');
-                    hit.setAttribute('stroke-linecap', 'round');
-                    hit.setAttribute('pointer-events', 'stroke');
-
-                    var title = document.createElementNS(SVGNS, 'title');
-                    var pA_txt = (con.puertoDesde != null) ? ' [puerto ' + con.puertoDesde + ']' : '';
-                    var pB_txt = (con.puertoHasta != null) ? ' [puerto ' + con.puertoHasta + ']' : '';
-                    var nombreA = objA ? (objA.descripcion || objA.nombre || '?') : '?';
-                    var nombreB = objB ? (objB.descripcion || objB.nombre || '?') : '?';
-                    var estadoTxt = caido ? ' — ⚠️ CAÍDO' : (degradado ? ' — ⚠️ degradado' : '');
-                    title.textContent = nombreA + pA_txt + ' ↔ ' + nombreB + pB_txt + ' — ' + con.tipo + ' ' + con.velocidad + estadoTxt;
-                    hit.appendChild(title);
-
-                    hit.addEventListener('mousedown', function (e) { e.stopPropagation(); });
-                    hit.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        if (modoConexion) return;
-                        conexionSeleccionada = con.id;
-                        dibujarConexiones();
-                        mostrarPanelConexion(con);
-                    });
-
-                    svg.appendChild(hit);
-                    dibujadas++;
-                } catch (err) {
-                    console.error('Error dibujando conexión ' + con.id + ':', err);
-                }
-            })(grupo[j], j, grupo.length);
-        }
+        preparadas.push({ con: con, repA: repA, repB: repB, pA: pA, pB: pB, extA: extA, extB: extB, clave: clave, idx: 0 });
     }
 
-    // 🔧 Al final, dibujar conexiones globales
+    // 🔧 PASO 2: contar y numerar conexiones por grupo (mismo par de extremos)
+    var conteo = {};
+    for (var p = 0; p < preparadas.length; p++) {
+        var cl = preparadas[p].clave;
+        if (conteo[cl] == null) conteo[cl] = 0;
+        preparadas[p].idx = conteo[cl]++;
+    }
+
+    var separacion = 12;
+
+    // 🔧 PASO 3: dibujar con offset CENTRADO (paralelas, sin solaparse)
+    for (var q = 0; q < preparadas.length; q++) {
+        (function (item) {
+            try {
+                var con = item.con;
+                var total = conteo[item.clave];
+                var offset = total > 1 ? (item.idx - (total - 1) / 2) * separacion : 0;
+
+                var dx = item.pB.x - item.pA.x;
+                var dy = item.pB.y - item.pA.y;
+                var len = Math.sqrt(dx * dx + dy * dy);
+                var perpX = len > 0 ? -dy / len : 0;
+                var perpY = len > 0 ? dx / len : 0;
+                var offX = perpX * offset;
+                var offY = perpY * offset;
+
+                var pA = { x: item.pA.x + offX, y: item.pA.y + offY };
+                var pB = { x: item.pB.x + offX, y: item.pB.y + offY };
+
+                var objA = buscarObjPorId(con.desde);
+                var objB = buscarObjPorId(con.hasta);
+
+                var stA = estadoDe(con.desde);
+                var stB = estadoDe(con.hasta);
+                var caido = (stA === 'offline' || stB === 'offline');
+                var degradado = (!caido) && (stA === 'degradado' || stB === 'degradado');
+
+                var color = con.tipo === 'FO' ? '#ff9f1c' : '#70e000';
+                if (degradado) color = '#f39c12';
+                if (caido) color = '#e74c3c';
+
+                var grosor = (con.id === conexionSeleccionada) ? 8 : 6;
+
+                var line = document.createElementNS(SVGNS, 'line');
+                line.setAttribute('x1', pA.x); line.setAttribute('y1', pA.y);
+                line.setAttribute('x2', pB.x); line.setAttribute('y2', pB.y);
+                line.setAttribute('class', 'linea-conexion');
+                line.setAttribute('data-con', con.id);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', grosor);
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('pointer-events', 'none');
+                if (item.extA || item.extB) line.setAttribute('opacity', '0.6');
+
+                if (caido) line.setAttribute('stroke-dasharray', '6 8');
+                else if (degradado) line.setAttribute('stroke-dasharray', '12 6');
+
+                svg.appendChild(line);
+
+                if (!caido) {
+                    for (var pp = 0; pp < 3; pp++) {
+                        var c = document.createElementNS(SVGNS, 'circle');
+                        c.setAttribute('r', '3.5');
+                        c.setAttribute('class', 'paquete');
+                        c.setAttribute('data-con', con.id);
+                        c.setAttribute('data-offset', (pp / 3).toFixed(2));
+                        c.setAttribute('fill', '#ffffff');
+                        c.setAttribute('pointer-events', 'none');
+                        c.setAttribute('cx', pA.x);
+                        c.setAttribute('cy', pA.y);
+                        if (item.extA || item.extB) c.setAttribute('opacity', '0.6');
+                        svg.appendChild(c);
+                    }
+                }
+
+                if (caido) {
+                    var mx = (pA.x + pB.x) / 2;
+                    var my = (pA.y + pB.y) / 2;
+                    var xmark = document.createElementNS(SVGNS, 'text');
+                    xmark.setAttribute('x', mx);
+                    xmark.setAttribute('y', my + 6);
+                    xmark.setAttribute('text-anchor', 'middle');
+                    xmark.setAttribute('fill', '#e74c3c');
+                    xmark.setAttribute('font-size', '20');
+                    xmark.setAttribute('font-weight', 'bold');
+                    xmark.setAttribute('pointer-events', 'none');
+                    xmark.textContent = '✕';
+                    svg.appendChild(xmark);
+                }
+
+                if (con.puertoDesde != null && item.repA) {
+                    var lblA = document.createElementNS(SVGNS, 'text');
+                    lblA.setAttribute('x', pA.x);
+                    lblA.setAttribute('y', pA.y - 8);
+                    lblA.setAttribute('text-anchor', 'middle');
+                    lblA.setAttribute('fill', '#fff');
+                    lblA.setAttribute('font-size', '10');
+                    lblA.setAttribute('font-weight', 'bold');
+                    lblA.setAttribute('pointer-events', 'none');
+                    lblA.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
+                    lblA.textContent = 'p' + con.puertoDesde;
+                    svg.appendChild(lblA);
+                }
+                if (con.puertoHasta != null && item.repB) {
+                    var lblB = document.createElementNS(SVGNS, 'text');
+                    lblB.setAttribute('x', pB.x);
+                    lblB.setAttribute('y', pB.y - 8);
+                    lblB.setAttribute('text-anchor', 'middle');
+                    lblB.setAttribute('fill', '#fff');
+                    lblB.setAttribute('font-size', '10');
+                    lblB.setAttribute('font-weight', 'bold');
+                    lblB.setAttribute('pointer-events', 'none');
+                    lblB.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
+                    lblB.textContent = 'p' + con.puertoHasta;
+                    svg.appendChild(lblB);
+                }
+
+                var hit = document.createElementNS(SVGNS, 'line');
+                hit.setAttribute('x1', pA.x); hit.setAttribute('y1', pA.y);
+                hit.setAttribute('x2', pB.x); hit.setAttribute('y2', pB.y);
+                hit.setAttribute('class', 'linea-hit');
+                hit.setAttribute('stroke', 'transparent');
+                hit.setAttribute('stroke-width', '16');
+                hit.setAttribute('stroke-linecap', 'round');
+                hit.setAttribute('pointer-events', 'stroke');
+
+                var title = document.createElementNS(SVGNS, 'title');
+                var pA_txt = (con.puertoDesde != null) ? ' [puerto ' + con.puertoDesde + ']' : '';
+                var pB_txt = (con.puertoHasta != null) ? ' [puerto ' + con.puertoHasta + ']' : '';
+                var nombreA = objA ? (objA.descripcion || objA.nombre || '?') : '?';
+                var nombreB = objB ? (objB.descripcion || objB.nombre || '?') : '?';
+                var nomA = nombreA + pA_txt + (item.extA ? ' (fuera de esta vista)' : '');
+                var nomB = nombreB + pB_txt + (item.extB ? ' (fuera de esta vista)' : '');
+                var estadoTxt = caido ? ' — ⚠️ CAÍDO' : (degradado ? ' — ⚠️ degradado' : '');
+                title.textContent = nomA + ' ↔ ' + nomB + ' — ' + con.tipo + ' ' + con.velocidad + estadoTxt;
+                hit.appendChild(title);
+
+                hit.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                hit.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (modoConexion) return;
+                    conexionSeleccionada = con.id;
+                    dibujarConexiones();
+                    mostrarPanelConexion(con);
+                });
+
+                svg.appendChild(hit);
+            } catch (err) {
+                console.error('Error dibujando conexión ' + con.id + ':', err);
+            }
+        })(preparadas[q]);
+    }
+
     dibujarConexionesGlobalesEnTopologia();
-}function dibujarConexionesGlobalesEnTopologia() {
+}
+
+function dibujarConexionesGlobalesEnTopologia() {
     fetch('/api/topologia/conexiones-globales', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (globales) {
@@ -1190,10 +1206,14 @@ function dibujarConexiones() {
                 line.setAttribute('pointer-events', 'stroke');
                 line.style.cursor = 'pointer';
                 
+                // 🔧 Mejora: Posicionar el label más lejos del centro para evitar solapamiento
+                var offsetLabelX = esDesdeAqui ? 40 : -40;
+                var offsetLabelY = -15;
+                
                 // Etiqueta visual "🔗" cerca del equipo
                 var lbl = document.createElementNS(SVGNS, 'text');
-                lbl.setAttribute('x', pLocal.x + (esDesdeAqui ? 20 : -20));
-                lbl.setAttribute('y', pLocal.y - 10);
+                lbl.setAttribute('x', pLocal.x + offsetLabelX);
+                lbl.setAttribute('y', pLocal.y + offsetLabelY);
                 lbl.setAttribute('text-anchor', 'middle');
                 lbl.setAttribute('fill', '#ff9f1c');
                 lbl.setAttribute('font-size', '14');
