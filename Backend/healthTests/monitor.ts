@@ -16,10 +16,9 @@ interface RecursoMonitor {
 }
 
 interface EstadoRecurso {
-    estado: 'online' | 'offline' | 'degradado' | 'desconocido' | 'sospechoso';
+    ok: boolean | null;         // último estado confirmado
     ultima_verificacion: number;
-    latencia_ms: number | null;
-    historial: Array<{ fecha: number; ok: boolean; ms?: number }>;
+    ms: number | null;
     intentos_fallidos: number;
     proximo_reintento: number;
     ultima_alerta_enviada: number;
@@ -28,12 +27,12 @@ interface EstadoRecurso {
 let topologiaGlobal: any = { municipios: {} };
 const estados: Record<string, EstadoRecurso> = {};
 
-const INTERVALO_VERIFICACION_MS = 5 * 60 * 1000;
-const PRIMER_REINTENTO_MS = 45 * 60 * 1000;
-const SEGUNDO_REINTENTO_MS = 5 * 60 * 1000;
-const TERCER_REINTENTO_MS = 45 * 60 * 1000;
+const INTERVALO_VERIFICACION_MS = 5 * 60 * 1000;   // ciclo base
+const PRIMER_REINTENTO_MS = 45 * 60 * 1000;        // 1er fallo → 45min
+const SEGUNDO_REINTENTO_MS = 5 * 60 * 1000;        // 2do fallo → 5min
+const TERCER_REINTENTO_MS = 45 * 60 * 1000;        // 3er fallo confirmado → re-chequeo 45min
 const MAX_INTENTOS_FALLIDOS = 3;
-const VENTANA_SUPRESION_MS = 60 * 60 * 1000;
+const VENTANA_SUPRESION_MS = 60 * 60 * 1000;       // 1 h sin re-alertar
 
 export function setTopologia(t: any) { topologiaGlobal = t; }
 export function setTopologiaMunicipio(id: string, datos: any) {
@@ -41,7 +40,19 @@ export function setTopologiaMunicipio(id: string, datos: any) {
     topologiaGlobal.municipios[id] = datos;
 }
 export function getTopologia() { return topologiaGlobal; }
-export function getEstados() { return estados; }
+export function getEstados() {
+    // Normalizado para /api/estados (frontend espera { estado: 'online'|'offline'|'degradado' })
+    const out: Record<string, any> = {};
+    for (const id of Object.keys(estados)) {
+        const s = estados[id];
+        let estado: string = 'desconocido';
+        if (s.ok === true) estado = 'online';
+        else if (s.ok === false) estado = 'offline';
+        else if (s.intentos_fallidos > 0) estado = 'degradado';
+        out[id] = { estado, latencia_ms: s.ms, ultima_verificacion: s.ultima_verificacion };
+    }
+    return out;
+}
 
 function esIpPlaceholder(ip: string): boolean {
     if (!ip || !ip.trim()) return true;
@@ -49,7 +60,7 @@ function esIpPlaceholder(ip: string): boolean {
     return t === '1.1.1.1' || t === '0.0.0.0' || t === '255.255.255.255' || t.indexOf('127.') === 0;
 }
 
-// 🔧 RESTAURADO: inventario COMPLETO, sin filtros (lo usan panel, estadísticas y analítica)
+// Inventario COMPLETO (panel, estadísticas, analítica)
 export function extraerRecursos(): RecursoMonitor[] {
     const out: RecursoMonitor[] = [];
     const recorrer = (obj: any, munId: string, munNombre: string) => {
@@ -82,44 +93,24 @@ export function extraerRecursos(): RecursoMonitor[] {
     return out;
 }
 
-// 🔧 NUEVO: SOLO para el ciclo de ping/SSH (excluye placeholders y no-monitoreables)
+// Solo los que sí se chequean en el ciclo
 export function extraerRecursosMonitoreables(): RecursoMonitor[] {
     return extraerRecursos().filter(r =>
         r.ip && !esIpPlaceholder(r.ip) && r.monitoreo !== 'ninguno'
     );
 }
 
-async function asegurarEsquemaHistorial() {
+// 🔧 INSERT adaptado al esquema de tu historialBD.ts:
+//    columnas: equipo_id, nombre, municipio, t (BIGINT), ok (BOOL), ms, detalle
+async function registrarHistorialBD(r: RecursoMonitor, ok: boolean, ms: number, detalle: string) {
     try {
-        await pool.query(`CREATE TABLE IF NOT EXISTS historial_estados (
-            id SERIAL PRIMARY KEY,
-            recurso_id VARCHAR(50) NOT NULL,
-            estado VARCHAR(20) NOT NULL,
-            detalle TEXT,
-            latencia_ms INT,
-            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-        await pool.query(`DO $$ BEGIN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                           WHERE table_name='historial_estados' AND column_name='recurso_id') THEN
-                IF EXISTS (SELECT 1 FROM information_schema.columns
-                           WHERE table_name='historial_estados' AND column_name='equipo_id') THEN
-                    ALTER TABLE historial_estados RENAME COLUMN equipo_id TO recurso_id;
-                ELSIF EXISTS (SELECT 1 FROM information_schema.columns
-                           WHERE table_name='historial_estados' AND column_name='id_recurso') THEN
-                    ALTER TABLE historial_estados RENAME COLUMN id_recurso TO recurso_id;
-                ELSE
-                    ALTER TABLE historial_estados ADD COLUMN recurso_id VARCHAR(50);
-                END IF;
-            END IF;
-        END $$;`);
-        await pool.query(`ALTER TABLE historial_estados ADD COLUMN IF NOT EXISTS estado VARCHAR(20)`);
-        await pool.query(`ALTER TABLE historial_estados ADD COLUMN IF NOT EXISTS detalle TEXT`);
-        await pool.query(`ALTER TABLE historial_estados ADD COLUMN IF NOT EXISTS latencia_ms INT`);
-        await pool.query(`ALTER TABLE historial_estados ADD COLUMN IF NOT EXISTS fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
-        console.log('✅ [HIST-BD] Esquema de historial_estados verificado/migrado');
+        await pool.query(
+            `INSERT INTO historial_estados (equipo_id, nombre, municipio, t, ok, ms, detalle)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [r.id, r.nombre || null, r.municipio || null, Date.now(), ok, ms || 0, detalle]
+        );
     } catch (e: any) {
-        console.error('⚠️ [HIST-BD] No se pudo migrar esquema de historial:', e.message);
+        console.warn(`⚠️ [MONITOR] Fallo al registrar historial de ${r.id}: ${e.message}`);
     }
 }
 
@@ -166,26 +157,14 @@ async function sshCheck(ip: string, user: string, pass: string): Promise<{ ok: b
     });
 }
 
-async function registrarHistorialBD(recursoId: string, estado: string, detalle: string, latencia: number) {
-    try {
-        await pool.query(
-            'INSERT INTO historial_estados (recurso_id, estado, detalle, latencia_ms) VALUES ($1, $2, $3, $4)',
-            [recursoId, estado, detalle, latencia]
-        );
-    } catch (e: any) {
-        console.warn(`⚠️ [HIST-BD] Fallo al registrar evento de ${recursoId}: ${e.message}`);
-    }
-}
-
 async function verificarRecurso(r: RecursoMonitor): Promise<void> {
     const ahora = Date.now();
 
     if (!estados[r.id]) {
         estados[r.id] = {
-            estado: 'desconocido',
+            ok: null,
             ultima_verificacion: 0,
-            latencia_ms: null,
-            historial: [],
+            ms: null,
             intentos_fallidos: 0,
             proximo_reintento: 0,
             ultima_alerta_enviada: 0
@@ -193,70 +172,68 @@ async function verificarRecurso(r: RecursoMonitor): Promise<void> {
     }
     const st = estados[r.id];
 
-    if (st.estado === 'sospechoso' && ahora < st.proximo_reintento) return;
-    if (st.estado === 'offline' && ahora < st.proximo_reintento) return;
+    // Respetar ventanas de reintento
+    if (ahora < st.proximo_reintento) return;
 
     let ok = false;
-    let ms: number | undefined;
+    let ms = 0;
 
     if (r.gestionable && r.tipo_gestion === 'SSH') {
         const result = await sshCheck(r.ip, process.env.SSH_USER || 'admin', process.env.SSH_PASS || '');
-        ok = result.ok; ms = result.ms;
+        ok = result.ok; ms = result.ms || 0;
         if (!ok) {
             const pingResult = await pingHost(r.ip);
-            ok = pingResult.ok; ms = pingResult.ms;
+            ok = pingResult.ok; ms = pingResult.ms || 0;
         }
     } else {
         const result = await pingHost(r.ip);
-        ok = result.ok; ms = result.ms;
+        ok = result.ok; ms = result.ms || 0;
     }
 
-    st.historial.push({ fecha: ahora, ok, ms });
-    if (st.historial.length > 50) st.historial.shift();
     st.ultima_verificacion = ahora;
-    st.latencia_ms = ms || null;
+    st.ms = ms || null;
 
     if (ok) {
-        const estabaMal = st.estado === 'offline' || st.estado === 'sospechoso';
-        st.estado = 'online';
+        const estabaMal = st.ok === false;
+        st.ok = true;
         st.intentos_fallidos = 0;
         st.proximo_reintento = 0;
         if (estabaMal) {
-            await registrarHistorialBD(r.id, 'online', 'Equipo recuperado', ms || 0);
+            await registrarHistorialBD(r, true, ms, 'Equipo recuperado');
             console.log(`✅ [MONITOR] ${r.nombre} (${r.ip}) RECUPERADO`);
         }
     } else {
         st.intentos_fallidos++;
 
         if (st.intentos_fallidos === 1) {
-            st.estado = 'sospechoso';
             st.proximo_reintento = ahora + PRIMER_REINTENTO_MS;
             console.log(`⚠️ [MONITOR] ${r.nombre} (${r.ip}) 1er fallo → sospechoso, reintento en 45min`);
         } else if (st.intentos_fallidos === 2) {
             st.proximo_reintento = ahora + SEGUNDO_REINTENTO_MS;
             console.log(`⚠️ [MONITOR] ${r.nombre} (${r.ip}) 2do fallo → reintento en 5min`);
         } else if (st.intentos_fallidos >= MAX_INTENTOS_FALLIDOS) {
-            if (st.estado !== 'offline') {
-                st.estado = 'offline';
-                st.proximo_reintento = ahora + TERCER_REINTENTO_MS;
-                const desdeUltima = ahora - st.ultima_alerta_enviada;
-                if (desdeUltima >= VENTANA_SUPRESION_MS) {
+            const estabaOk = st.ok !== false; // primera vez que confirmamos caída
+            st.ok = false;
+            st.proximo_reintento = ahora + TERCER_REINTENTO_MS;
+
+            const desdeUltima = ahora - st.ultima_alerta_enviada;
+            if (desdeUltima >= VENTANA_SUPRESION_MS) {
+                if (estabaOk) {
                     console.log(`🔴 [MONITOR] ${r.nombre} (${r.ip}) OFFLINE CONFIRMADO (3 fallos)`);
-                    await registrarHistorialBD(r.id, 'offline', 'Caída confirmada tras 3 intentos', 0);
+                    await registrarHistorialBD(r, false, 0, 'Caída confirmada tras 3 intentos');
                     await notificarSegunPrioridad(r, 'Equipo sin conexión tras múltiples verificaciones');
                     st.ultima_alerta_enviada = ahora;
                 } else {
-                    console.log(`🔴 [MONITOR] ${r.nombre} (${r.ip}) offline (alerta suprimida, reciente)`);
+                    console.log(`🔴 [MONITOR] ${r.nombre} (${r.ip}) sigue offline (alerta suprimida)`);
                 }
             } else {
-                st.proximo_reintento = ahora + TERCER_REINTENTO_MS;
+                console.log(`🔴 [MONITOR] ${r.nombre} (${r.ip}) offline (alerta suprimida, reciente)`);
             }
         }
     }
 }
 
 async function cicloMonitor() {
-    // 🔧 CORREGIDO: el ciclo usa SOLO los monitoreables, no el inventario completo
     const recursos = extraerRecursosMonitoreables();
     console.log(`🔍 [MONITOR] Verificando ${recursos.length} recursos monitoreables...`);
     const BATCH = 10;
@@ -267,7 +244,6 @@ async function cicloMonitor() {
 }
 
 export async function iniciarMonitor() {
-    await asegurarEsquemaHistorial();
     console.log('🔍 [MONITOR] Iniciando monitoreo inteligente (3 strikes + supresión)');
     await cicloMonitor();
     setInterval(cicloMonitor, INTERVALO_VERIFICACION_MS);

@@ -1,116 +1,138 @@
 import * as fs from 'fs';
+import { pool } from './db/db.ts';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { Pool } = require('pg');
+// 🔧 Columna de id detectada en runtime (equipo_id o recurso_id, lo que exista)
+let idCol: string | null = null;
+let hasOk = false;
+let hasNombre = false;
+let hasMunicipio = false;
+let hasFecha = true;
 
-const pool: any = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    user: process.env.DB_USER || 'rim',
-    password: process.env.DB_PASS || 'rim123',
-    database: process.env.DB_NAME || 'rim',
-    max: 5
-});
+async function inspeccionar(): Promise<string[]> {
+    const r = await pool.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'historial_estados'`
+    );
+    const names: string[] = r.rows.map((x: any) => x.column_name);
+    if (names.indexOf('equipo_id') >= 0) idCol = 'equipo_id';
+    else if (names.indexOf('recurso_id') >= 0) idCol = 'recurso_id';
+    else idCol = null;
+    hasOk = names.indexOf('ok') >= 0;
+    hasNombre = names.indexOf('nombre') >= 0;
+    hasMunicipio = names.indexOf('municipio') >= 0;
+    hasFecha = names.indexOf('fecha') >= 0;
+    return names;
+}
 
 export async function initHistorial() {
-    // Verificar si la tabla existe y tiene la estructura correcta
-    const checkResult = await pool.query(`
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name = 'historial_estados' AND column_name = 't'
-    `);
+    await pool.query(`CREATE TABLE IF NOT EXISTS historial_estados (
+        id SERIAL PRIMARY KEY,
+        equipo_id VARCHAR(50) NOT NULL,
+        estado VARCHAR(20) NOT NULL,
+        detalle TEXT,
+        latencia_ms INT,
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
 
-    // Si la tabla existe pero no tiene la columna 't', eliminarla
-    if (checkResult.rowCount === 0) {
-        console.log('[HIST-BD] Tabla existente sin estructura correcta, recreando...');
-        await pool.query(`DROP TABLE IF EXISTS historial_estados CASCADE;`);
+    const names = await inspeccionar();
+
+    // Si la tabla existe pero no tiene ninguna columna de id reconocible, agregarla
+    if (!idCol) {
+        await pool.query(`ALTER TABLE historial_estados ADD COLUMN equipo_id VARCHAR(50)`);
+        idCol = 'equipo_id';
     }
-
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS historial_estados (
-            id BIGSERIAL PRIMARY KEY,
-            equipo_id TEXT NOT NULL,
-            nombre TEXT,
-            municipio TEXT,
-            t BIGINT NOT NULL,
-            ok BOOLEAN NOT NULL,
-            ms INTEGER DEFAULT 0,
-            detalle TEXT DEFAULT ''
-        );
-    `);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hist_t ON historial_estados(t);`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_hist_equipo_t ON historial_estados(equipo_id, t);`);
-    console.log('[HIST-BD] Tabla historial_estados lista');
-}
-
-// Inserta en lotes de 1000 para no exceder límites de parámetros
-export async function insertarEventos(evts: any[]) {
-    for (let i = 0; i < evts.length; i += 1000) {
-        const lote = evts.slice(i, i + 1000);
-        const values: string[] = [];
-        const params: any[] = [];
-        let p = 1;
-        for (const e of lote) {
-            values.push(`($${p},$${p + 1},$${p + 2},$${p + 3},$${p + 4},$${p + 5},$${p + 6})`);
-            params.push(e.equipo_id, e.nombre || null, e.municipio || null, e.t, e.ok, e.ms || 0, e.detalle || '');
-            p += 7;
-        }
-        await pool.query(`INSERT INTO historial_estados (equipo_id,nombre,municipio,t,ok,ms,detalle) VALUES ${values.join(',')}`, params);
+    // Asegurar columna de fecha (usada por rangos y purga)
+    if (!hasFecha) {
+        await pool.query(`ALTER TABLE historial_estados ADD COLUMN fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        hasFecha = true;
     }
+    await pool.query(`ALTER TABLE historial_estados ADD COLUMN IF NOT EXISTS estado VARCHAR(20)`);
+
+    console.log('✅ [HIST-BD] historial_estados listo (columna de id detectada: ' + idCol + ')');
 }
 
-// 🔧 FIX: pg devuelve BIGINT como string → convertir t y ms a número
-export async function obtenerEventosRango(desde: number, hasta: number) {
-    const r = await pool.query(
-        `SELECT equipo_id,nombre,municipio,t,ok,ms,detalle FROM historial_estados WHERE t>=$1 AND t<=$2 ORDER BY t ASC`,
-        [desde, hasta]);
-    return r.rows.map((row: any) => ({
-        ...row,
-        t: Number(row.t),
-        ms: Number(row.ms)
-    }));
-}
-
-// 🔧 FIX: normalizar t a número también aquí
-export async function obtenerUltimosEstados() {
-    const r = await pool.query(
-        `SELECT DISTINCT ON (equipo_id) equipo_id,nombre,municipio,t,ok,detalle FROM historial_estados ORDER BY equipo_id, t DESC`);
-    return r.rows.map((row: any) => ({
-        ...row,
-        t: Number(row.t)
-    }));
-}
-
-export async function purgarHistorial(dias: number) {
-    const corte = Date.now() - dias * 86400000;
-    const r = await pool.query(`DELETE FROM historial_estados WHERE t < $1`, [corte]);
-    return r.rowCount || 0;
-}
-
-export async function contarHistorial() {
-    const r = await pool.query(`SELECT COUNT(*)::int AS n FROM historial_estados`);
-    return r.rows[0].n;
-}
-
-// Migra el JSON viejo a BD (solo si la tabla está vacía) y lo renombra
-export async function migrarDesdeJSON(ruta: string) {
-    if (!fs.existsSync(ruta)) return 0;
-    const n = await contarHistorial();
-    if (n > 0) return 0;
+export async function obtenerEventosRango(desde: number, hasta: number): Promise<any[]> {
     try {
-        const raw = JSON.parse(fs.readFileSync(ruta, 'utf8'));
-        const evts: any[] = [];
-        for (const id of Object.keys(raw)) {
-            const hist = (raw[id] && raw[id].historial) || [];
-            for (const ev of hist) {
-                evts.push({ equipo_id: id, nombre: ev.nombre || null, municipio: ev.municipio || null, t: ev.t, ok: ev.ok, ms: ev.ms || 0, detalle: ev.detalle || '' });
-            }
-        }
-        if (evts.length) await insertarEventos(evts);
-        fs.renameSync(ruta, ruta + '.migrado');
-        console.log(`[HIST-BD] Migrados ${evts.length} eventos desde JSON`);
-        return evts.length;
+        if (!idCol) await inspeccionar();
+        if (!idCol) return [];
+
+        // 🔧 SELECT dinámico: se adapta a las columnas que realmente existan
+        const okExpr = hasOk ? 'ok' : `(COALESCE(estado, '') IN ('online', 'ok'))`;
+        const tExpr = hasFecha ? `(EXTRACT(EPOCH FROM fecha)::float8 * 1000)` : '0';
+        const whereExpr = hasFecha
+            ? `fecha BETWEEN to_timestamp($1 / 1000.0) AND to_timestamp($2 / 1000.0)`
+            : 'true';
+
+        const sql = `SELECT ${idCol} AS equipo_id,
+                            ${okExpr} AS ok,
+                            ${tExpr} AS t,
+                            ${hasNombre ? 'nombre' : 'NULL'} AS nombre,
+                            ${hasMunicipio ? 'municipio' : 'NULL'} AS municipio,
+                            estado, detalle, latencia_ms
+                     FROM historial_estados
+                     WHERE ${whereExpr}
+                     ORDER BY fecha ASC
+                     LIMIT 50000`;
+
+        const r = await pool.query(sql, [desde, hasta]);
+        return r.rows.map((x: any) => ({
+            equipo_id: x.equipo_id,
+            ok: !!x.ok,
+            t: Number(x.t),
+            nombre: x.nombre || null,
+            municipio: x.municipio || null,
+            estado: x.estado,
+            detalle: x.detalle,
+            latencia_ms: x.latencia_ms
+        }));
     } catch (e: any) {
-        console.error('[HIST-BD] Error migrando JSON:', e.message);
+        // 🔧 Nunca romper la analítica: si algo falla, devolver vacío y loguear
+        console.warn('⚠️ [HIST-BD] obtenerEventosRango falló (analítica degradada):', e.message);
+        return [];
+    }
+}
+
+export async function migrarDesdeJSON(ruta: string) {
+    try {
+        if (!fs.existsSync(ruta)) return;
+        const raw = fs.readFileSync(ruta, 'utf8');
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        const count = await pool.query('SELECT COUNT(*) AS c FROM historial_estados');
+        if (parseInt(count.rows[0].c, 10) > 0) return; // ya hay datos: no duplicar
+
+        if (!idCol) await inspeccionar();
+        if (!idCol) return;
+
+        let insertados = 0;
+        for (const ev of data) {
+            const id = ev.equipo_id || ev.recurso_id || ev.equipoId || ev.recursoId || ev.id_equipo;
+            if (!id) continue;
+            const estado = ev.estado || (ev.ok ? 'online' : 'offline');
+            const fecha = ev.fecha ? new Date(ev.fecha) : new Date();
+            await pool.query(
+                `INSERT INTO historial_estados (${idCol}, estado, detalle, latencia_ms, fecha)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [id, estado, ev.detalle || '', ev.latencia_ms || ev.latenciaMs || 0, fecha]
+            );
+            insertados++;
+        }
+        console.log(`✅ [HIST-BD] Migrados ${insertados} eventos desde JSON`);
+    } catch (e: any) {
+        console.warn('⚠️ [HIST-BD] migrarDesdeJSON falló (no bloquea arranque):', e.message);
+    }
+}
+
+export async function purgarHistorial(dias: number): Promise<number> {
+    try {
+        const corte = Date.now() - dias * 24 * 60 * 60 * 1000;
+        const r = await pool.query(
+            `DELETE FROM historial_estados WHERE fecha < to_timestamp($1 / 1000.0)`,
+            [corte]
+        );
+        return r.rowCount || 0;
+    } catch (e: any) {
+        console.warn('⚠️ [HIST-BD] purgarHistorial falló:', e.message);
         return 0;
     }
 }
