@@ -448,3 +448,17 @@ header h1 { color:#e8eef5 !important; }
 /* Handles de curva */
 .handle-curva { cursor:grab; }
 .handle-curva-ghost { cursor:grab; }
+ /* Fondo geográfico más oscuro para que el lienzo se lea */
+    #mapa-fondo .leaflet-tile-pane { filter: brightness(.5) saturate(.65) contrast(.95); }
+    section#lienzo { background: rgba(8,13,24,.62) !important; }
+    /* Panel y textos con contraste alto */
+    #panel { background: #0d1520 !important; color: #e8eef5 !important; }
+    #panel h2, #panel h3, #panel p, #panel label, #panel span,
+    #panel td, #panel th, #panel div, #panel li, #panel strong { color: #dfe9f3 !important; }
+    #panel table tr { border-color: #1a2b47 !important; }
+    #panel input, #panel select, #panel textarea {
+        background: #0a1322 !important; color: #e8eef5 !important; border: 1px solid #22375a !important;
+    }
+    header h1, #contadorEquipos, #estadoConexion, #indicadorGuardado { color: #e8eef5 !important; }
+    #lienzo .elemento .etiqueta { color: #fff !important; }
+    #lienzo .elemento .ip { color: #bcd0e2 !important; }

@@ -557,8 +557,7 @@ function initMap() {
 
     lMuni = L.layerGroup().addTo(map); lInter = L.layerGroup().addTo(map); lIntra = L.layerGroup().addTo(map);
     lCont = L.layerGroup().addTo(map); lEq = L.layerGroup().addTo(map); lPort = L.layerGroup().addTo(map); lHand = L.layerGroup().addTo(map);
-    map.on('zoomend moveend', function () { safe(updateLOD, 'lod'); safe(renderCon, 'con'); safe(renderMuni, 'muni'); safe(hud, 'hud'); });
-    map.on('click', cerrarCtx);
+    map.on('zoomend moveend', function () { safe(updateLOD, 'lod'); safe(renderMuni, 'muni'); safe(renderCont, 'cont'); safe(renderEq, 'eq'); safe(renderCon, 'con'); safe(hud, 'hud'); }); map.on('click', cerrarCtx);
     map.on('contextmenu', function (e) { L.DomEvent.preventDefault(e.originalEvent); safe(function () { ctxVacio(e); }, 'ctx'); });
 }
 function hud() {
@@ -689,8 +688,8 @@ function renderCon() {
     REF.lines = {}; REF.con = {}; REF.hits = {};
 
     S.globales.forEach(function (g) {
-        var a = posLL(g.desde_id) || (geoDe(g.desde_municipio_id) || {}).centro;
-        var b = posLL(g.hasta_id) || (geoDe(g.hasta_municipio_id) || {}).centro;
+               var a = (geoDe(g.desde_municipio_id) || {}).centro;
+        var b = (geoDe(g.hasta_municipio_id) || {}).centro;
         if (!a || !b) return;
         pintar({ id: g.id, desde: g.desde_id, hasta: g.hasta_id, tipo: g.tipo, velocidad: g.velocidad, puertoDesde: g.puerto_desde, puertoHasta: g.puerto_hasta, inter: true },
             a, b, 0, 1,
@@ -843,7 +842,7 @@ function updateChips() {
 }
 async function refrescar() {
     try { S.estados = await api('/api/estados'); } catch (e) { return; }
-    renderCon(); renderMuni(); renderCont(); updateChips();
+        renderMuni(); renderCont(); renderEq(); renderCon(); updateChips();
     if (S.sel || S.connSel) renderInspector();
 }
 
