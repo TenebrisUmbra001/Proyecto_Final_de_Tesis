@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Conectividad de la Red Interna MININT en Pinar del Río</title>
+<link rel="stylesheet" href="/private/libs/leaflet/leaflet.css">
+<link rel="stylesheet" href="/private/Styles/geomapa.css">
+<script src="/private/libs/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="splash" id="splash">
+  <div class="splash-inner">
+    <div class="splash-mark">◈</div>
+    <h1>RIM · GeoMapa</h1>
+    <p>Red de Información Municipal · Pinar del Río</p>
+    <div class="splash-bar"><i id="splashBar"></i></div>
+    <span class="splash-status" id="splashStatus">Iniciando…</span>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">◈</div>
+    <div class="brand-text"><strong>RIM · GeoMapa</strong><span>Pinar del Río</span></div>
+  </div>
+  <div class="topbar-center">
+    <div class="live-pill" id="livePill"><i class="dot"></i><span>Conectando…</span></div>
+    <div class="chips" id="statChips"></div>
+  </div>
+  <div class="topbar-actions">
+    <span class="role-badge" id="roleBadge">—</span>
+    <button type="button" class="tbtn" id="btnFO">🔌 Enlace FO</button>
+    <button type="button" class="tbtn" id="btnETH">🔌 Enlace ETH</button>
+    <button type="button" class="tbtn" id="btnProvincia">🗺️ Provincia</button>
+    <button type="button" class="tbtn" id="btnPanel">⚙️ Panel</button>
+    <button type="button" class="tbtn danger" id="btnSalir">Salir</button>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="map-wrap">
+    <div id="mapa"></div>
+    <div class="zoom-hud" id="zoomHud"></div>
+    <div class="crumbs" id="crumbs"></div>
+
+    <div class="mode-banner" id="modeBanner" hidden>
+      <span class="mb-ico">🔌</span>
+      <span class="mb-txt" id="modeText"></span>
+      <button type="button" class="mb-cancel" id="modeCancel">Cancelar (Esc)</button>
+    </div>
+
+    <aside class="inspector scroll" id="inspector">
+      <div class="insp-head">
+        <h3 id="inspTitle">Resumen</h3>
+        <button type="button" class="insp-close" id="inspClose">✕</button>
+      </div>
+      <div class="insp-body" id="inspBody"></div>
+    </aside>
+
+    <div class="legend" id="legend">
+      <button type="button" class="legend-head" id="legendToggle"><span>Leyenda</span><i>▾</i></button>
+      <div class="legend-body">
+        <div class="lg"><i style="background:#21c063"></i>En línea</div>
+        <div class="lg"><i style="background:#f39c12"></i>Degradado</div>
+        <div class="lg"><i style="background:#e74c3c"></i>Sin respuesta</div>
+        <div class="lg"><i style="background:#95a5a6"></i>Sin monitoreo</div>
+        <div class="lg sep"><i class="ln" style="background:#ff9f1c"></i>Fibra óptica</div>
+        <div class="lg"><i class="ln" style="background:#70e000"></i>Ethernet</div>
+        <div class="lg"><i class="ln" style="background:#e74c3c"></i>Interrumpido ✕</div>
+        <div class="lg"><i class="lock">🔒</i>Bloqueado</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="ctx" id="ctxMenu" hidden></div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal">
+    <header class="modal-head"><h3 id="modalTitle"></h3><button type="button" class="modal-x" id="modalX">✕</button></header>
+    <div class="modal-body scroll" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="/private/libs/leaflet/leaflet.js"></script>
+<script src="/private/Javascripts/geomapa.js"></script>
+</body>
+</html>

@@ -12,6 +12,8 @@ import { iniciarBackupsBD, ejecutarBackupBD, listarBackupsBD, rutaBackup } from 
 import { iniciarOracleAsm, cicloAsm, getEstadoAsm } from './oracleAsm';
 import { calcularTodo } from './estadisticasAvanzadas';
 import { initHistorial, migrarDesdeJSON, purgarHistorial } from './historialBD';
+import { initGeoDB } from './db/geo';
+import { montarRutasGeo } from './geoApi';
 // BD
 import {
     initDB, migrarUsuariosIniciales,
@@ -112,7 +114,7 @@ function decrementarPuerto(obj: any, medio: string) {
     }
 }
 
-// 🔧 NUEVO: Carga TODA la topología desde la BD al arrancar
+// 🔧 Carga TODA la topología desde la BD al arrancar
 async function cargarTopologiaInicial() {
     try {
         const municipios = await listarMunicipios();
@@ -186,18 +188,15 @@ app.post('/api/cambiar-password', requiereLogin, async (req, res) => {
 // ============================================================================
 // 🖧 API: Monitor
 // ============================================================================
-// 🔧 Endpoint legacy defensivo: hace merge por municipio en lugar de reemplazar todo
 app.post('/api/topologia', requiereLogin, (req, res) => {
     const body = req.body || {};
     if (body.municipios && typeof body.municipios === 'object') {
-        // Merge por municipio: nunca pisa los que no vienen en el payload
         for (const munId of Object.keys(body.municipios)) {
             if (body.municipios[munId]) {
                 setTopologiaMunicipio(munId, body.municipios[munId]);
             }
         }
     }
-    // Si no trae estructura de municipios, no hace nada (defensivo)
     res.json({ exito: true });
 });
 
@@ -217,9 +216,11 @@ app.get('/private/operador.html', requiereRol('operador', 'admin', 'superadmin')
 app.get('/private/superadmin.html', requiereRol('superadmin'), (req, res) => {
     res.sendFile(path.join(__dirname, '../Fronted/private/superadmin.html'));
 });
+// 🔧 FASE 2: mapa.html era la vista provincial vieja → redirige al GeoMapa
 app.get('/private/mapa.html', requiereLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, '../Fronted/private/mapa.html'));
+    res.redirect('/private/geomapa.html');
 });
+// 📋 topologia.html sigue siendo el editor clásico por municipio
 app.get('/private/topologia.html', requiereLogin, (req, res) => {
     res.sendFile(path.join(__dirname, '../Fronted/private/topologia.html'));
 });
@@ -227,7 +228,6 @@ app.get('/private/topologia.html', requiereLogin, (req, res) => {
 // ============================================================================
 // 🛠️ API: Panel administrativo
 // ============================================================================
-// 🗄️ Estado de diskgroups ASM
 app.get('/api/admin/oracle-asm', requiereRol('admin', 'superadmin'), (req, res) => {
     res.json(getEstadoAsm());
 });
@@ -250,7 +250,6 @@ app.delete('/api/admin/usuarios/:id', requiereRol('superadmin'), async (req, res
     await eliminarUsuario(parseInt(req.params.id, 10));
     res.json({ exito: true });
 });
-// 📈 Estadísticas avanzadas (tendencia, top, MTTR/MTBF, heatmap)
 app.get('/api/admin/estadisticas-avanzadas', requiereRol('admin', 'superadmin'), async (req, res) => {
     const dias = parseInt(String(req.query.dias || '30'), 10);
     const gran = String(req.query.gran || 'dia');
@@ -320,7 +319,6 @@ app.get('/api/admin/inventario-fisico', requiereRol('admin', 'superadmin'), asyn
     }
 });
 
-// ✏️ Editar datos de placa de un equipo desde el panel
 app.put('/api/admin/equipos/:id', requiereRol('admin', 'superadmin'), async (req, res) => {
     try {
         const munId = req.body.municipioId;
@@ -346,7 +344,6 @@ app.put('/api/admin/equipos/:id', requiereRol('admin', 'superadmin'), async (req
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// 🗑️ Eliminar un equipo desde el panel (limpia conexiones y libera puertos)
 app.delete('/api/admin/equipos/:id', requiereRol('superadmin'), async (req, res) => {
     try {
         const munId = String(req.query.mun || '');
@@ -380,7 +377,7 @@ app.get('/api/admin/estadisticas', requiereRol('admin', 'superadmin'), (req, res
     const st: any = {
         total: recursos.length,
         porTipo: {},
-        porEstado: { online: 0, offline: 0, degradado: 0, desconocido: 0, excluido: 0 },   // 🔧 NUEVO: excluido
+        porEstado: { online: 0, offline: 0, degradado: 0, desconocido: 0, excluido: 0 },
         porMunicipio: {},
         eventosOk: 0, eventosTotal: 0
     };
@@ -429,12 +426,10 @@ app.post('/api/admin/probar-correo', requiereRol('admin', 'superadmin'), async (
     res.json({ exito: ok });
 });
 
-// 🔐 Auditoría SSH
 app.get('/api/admin/auditoria', requiereRol('admin', 'superadmin'), async (req, res) => {
     res.json(await getAuditoria());
 });
 
-// 🗄️ Backups de la base de datos (solo superadmin)
 app.post('/api/admin/backup-bd', requiereRol('superadmin'), async (req, res) => {
     try { res.json(await ejecutarBackupBD()); }
     catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -457,12 +452,11 @@ app.get('/api/admin/configs/:id/descargar', requiereRol('admin', 'superadmin'), 
         const nombre = (c.equipo_nombre || 'config').replace(/[^a-zA-Z0-9_-]/g, '_');
         const fecha = new Date(c.fecha).toISOString().slice(0, 19).replace(/:/g, '-');
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${nombre}_${fecha}.txt"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${nombre}_${fecha}.txt`);
         res.send(c.configuracion);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// 💾 Configs de switches
 app.get('/api/admin/configs', requiereRol('admin', 'superadmin'), async (req, res) => {
     res.json(await listarConfigs());
 });
@@ -484,7 +478,7 @@ app.get('/api/topologia/db/:id', requiereLogin, async (req, res) => {
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/topologia/db/:id', requiereLogin, async (req, res) => {
+app.put('/api/topologia/db/:id', requiereRol('admin', 'superadmin'), async (req, res) => {
     try {
         await guardarTopologiaCompleta(req.params.id, req.body.nombre || 'Sin nombre', req.body);
         setTopologiaMunicipio(req.params.id, req.body);
@@ -493,7 +487,9 @@ app.put('/api/topologia/db/:id', requiereLogin, async (req, res) => {
         console.error('Error guardando topología:', e);
         res.status(500).json({ error: e.message });
     }
-});// 🔗 Conexiones globales (inter-municipios)
+});
+
+// 🔗 Conexiones globales (inter-municipios)
 app.post('/api/topologia/conexion-global', requiereRol('admin', 'superadmin'), async (req, res) => {
     try {
         const con = await crearConexionGlobal(req.body);
@@ -531,6 +527,11 @@ app.get('/api/topologia/conexiones-equipo/:id', requiereLogin, async (req, res) 
     }
 });
 
+// ============================================================================
+// 🌐 FASE 1: Capa geográfica persistida (locks, posiciones, curvas)
+// ============================================================================
+montarRutasGeo(app, requiereLogin, requiereRol);
+
 app.use('/private', requiereLogin, express.static(path.join(__dirname, '../Fronted/private')));
 
 // ============================================================================
@@ -540,13 +541,13 @@ initDB()
     .then(() => migrarUsuariosIniciales())
     .then(() => initHistorial())
     .then(() => migrarDesdeJSON(path.join(__dirname, 'db/historial_estados.json')))
+    .then(() => initGeoDB().catch((e: any) => console.error('⚠️ [GEO] init falló (no bloquea arranque):', e.message)))
     .then(() => cargarTopologiaInicial())
     .then(async () => {
         iniciarOracleAsm();
         await iniciarMonitor();
         iniciarBackups();
         iniciarBackupsBD();
-        // Purga diaria de eventos de más de 90 días
         setInterval(() => {
             purgarHistorial(90).then(n => { if (n) console.log('[HIST-BD] Purgados ' + n + ' eventos viejos'); });
         }, 24 * 60 * 60 * 1000);
@@ -566,4 +567,5 @@ server.listen(PORT, host, () => {
     console.log(`📁 Sirviendo archivos desde: ${path.join(__dirname, '../Fronted')}`);
     console.log(`🔐 Proxy SSH WebSocket activo en /ssh-proxy`);
     console.log(`💾 Backup semanal de configs activo`);
+    console.log(`🌐 Rutas de capa geográfica activas en /api/geo/*`);
 });

@@ -30,7 +30,7 @@ document.getElementById('ButtonLogin').addEventListener('click', function(event)
     })
     .then(function(data) {
        if (data.exito) {
-    window.location.href = '/private/mapa.html';
+    window.location.href = '/private/geomapa.html';
 }
     })
     .catch(function(error) {

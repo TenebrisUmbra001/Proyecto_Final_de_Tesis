@@ -326,4 +326,125 @@ main {
     border-radius: 4px;
     margin-top: 4px;
     box-sizing: border-box;
+}/* =========================================================
+   🗺️ Mapa de fondo geográfico del municipio
+   ========================================================= */
+
+/* El mapa queda fijo ocupando toda la ventana, por detrás de todo */
+#mapa-fondo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    background: #0a1120;
+    pointer-events: none;   /* nunca captura clicks: el lienzo sigue al mando */
 }
+
+/* Todo lo demás se pone por encima del mapa */
+header,
+#migas,
+main,
+#modal {
+    position: relative;
+    z-index: 1;
+}
+
+/* El lienzo ahora es semi-transparente: se ve el mapa debajo
+   pero los elementos encima siguen siendo legibles */
+#lienzo {
+    background: rgba(10, 17, 32, 0.78) !important;
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+}
+
+/* El panel lateral conserva su fondo sólido para legibilidad */
+#panel {
+    background: rgba(16, 33, 48, 0.96) !important;
+}
+
+/* Los elementos dentro del lienzo siguen teniendo su propio fondo */
+#lienzo .elemento {
+    background: rgba(15, 52, 96, 0.92);
+    border: 1px solid rgba(34, 211, 238, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+/* =========================================================
+   🗺️ Fondo geográfico + modernización de interfaz
+   ========================================================= */
+#mapa-fondo { position: fixed; top:0; left:0; right:0; bottom:0; z-index:0; background:#0a1120; pointer-events:none; }
+header, #migas, main, #modal { position: relative; z-index: 1; }
+#lienzo { background: rgba(10,17,32,0.78) !important; }
+#panel { background: rgba(16,33,48,0.96) !important; color:#e8eef5; }
+#panel .h2, #panel h3 { color:#e8eef5; }
+#panel p, #panel label { color:#c7d6e4; }
+#panel input, #panel select, #panel textarea { background:#0a1322; color:#e8eef5; border:1px solid #22375a; border-radius:6px; padding:6px 8px; width:100%; box-sizing:border-box; }
+#panel .aviso { color:#9fb3c8; }
+
+/* Header moderno */
+header { background: linear-gradient(100deg,#0b1424,#12203a 45%,#0f3460) !important; border-bottom:1px solid #22375a; }
+header h1 { color:#e8eef5 !important; }
+#contadorEquipos, #estadoConexion, #indicadorGuardado { color:#9fb3c8 !important; }
+.BtnHeader { background:rgba(255,255,255,.08) !important; color:#e8eef5 !important; border:1px solid #22375a !important; border-radius:8px; }
+.BtnHeader:hover { background:rgba(52,152,219,.3) !important; }
+.BtnHeader.conectar.activo { background:linear-gradient(140deg,#0f3460,#3498db) !important; }
+.BtnHeader.salir { background:rgba(231,76,60,.25) !important; border-color:#e74c3c !important; }
+
+/* Botones de acción modernos */
+.btn-add { background:linear-gradient(140deg,#0f3460,#3498db) !important; color:#fff !important; border:1px solid #3498db !important; border-radius:8px; }
+.btn-add:hover { filter:brightness(1.15); }
+.btn-del { background:rgba(231,76,60,.2) !important; color:#ffb0a6 !important; border:1px solid #e74c3c !important; border-radius:8px; }
+
+/* Elementos del lienzo */
+#lienzo .elemento { background:rgba(15,52,96,.92); border:1px solid rgba(34,211,238,.5); box-shadow:0 2px 8px rgba(0,0,0,.4); color:#e8eef5; }
+#lienzo .elemento .etiqueta { color:#e8eef5; }
+#lienzo .elemento .ip { color:#9fb3c8; }
+#lienzo .elemento.seleccionado { border-color:#22d3ee; box-shadow:0 0 0 3px rgba(34,211,238,.4); }
+
+/* Listado lateral */
+.rail-topo { position:absolute; left:0; top:0; bottom:0; width:250px; z-index:6; background:rgba(10,17,32,.94); border-right:1px solid #22375a; display:flex; flex-direction:column; transition:transform .25s; }
+.rail-topo.cerrado { transform:translateX(-100%); }
+.rail-head { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:linear-gradient(90deg,#12203a,#0f3460); border-bottom:1px solid #22375a; }
+.rail-head h2 { margin:0; font-size:12px; color:#e8eef5; letter-spacing:.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rail-toggle { background:none; border:none; color:#9fb3c8; cursor:pointer; font-size:14px; }
+.rail-body { padding:10px 12px; overflow-y:auto; flex:1; }
+#railBuscar { width:100%; box-sizing:border-box; background:#0a1322; color:#e8eef5; border:1px solid #22375a; border-radius:8px; padding:7px 9px; margin-bottom:8px; }
+.rail-resumen { display:flex; gap:8px; flex-wrap:wrap; font-size:10.5px; color:#9fb3c8; margin-bottom:8px; }
+.rail-lista { display:flex; flex-direction:column; gap:4px; }
+.rail-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:7px; background:rgba(255,255,255,.04); border:1px solid #1a2b47; cursor:pointer; }
+.rail-item:hover { background:rgba(52,152,219,.18); }
+.rail-item.activo { background:rgba(34,211,238,.18); border-color:#22d3ee; }
+.rail-dot { width:8px; height:8px; border-radius:50%; flex:0 0 8px; }
+.rail-txt { flex:1; min-width:0; }
+.rail-txt b { display:block; font-size:11.5px; color:#e8eef5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rail-txt span { font-size:10px; color:#9fb3c8; }
+.rail-entrar { background:rgba(34,211,238,.15); border:1px solid #22d3ee; color:#22d3ee; border-radius:6px; cursor:pointer; padding:2px 6px; }
+.rail-vacio { color:#9fb3c8; font-size:11.5px; }
+.rail-abrir { display:none; position:absolute; left:8px; top:8px; z-index:7; width:34px; height:34px; align-items:center; justify-content:center; background:rgba(16,33,48,.95); border:1px solid #22375a; border-radius:8px; color:#e8eef5; cursor:pointer; }
+
+/* Leyenda */
+.leyenda-topo { position:absolute; right:300px; bottom:12px; z-index:6; width:200px; background:rgba(10,17,32,.94); border:1px solid #22375a; border-radius:11px; overflow:hidden; }
+.leyenda-head { width:100%; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(90deg,#12203a,#0f3460); border:none; color:#e8eef5; padding:8px 11px; font-size:11px; letter-spacing:1px; cursor:pointer; }
+.leyenda-body { padding:9px 11px; display:flex; flex-direction:column; gap:5px; }
+.leyenda-topo.closed .leyenda-body { display:none; }
+.lg { display:flex; align-items:center; gap:8px; font-size:10.5px; color:#c7d6e4; }
+.lg i { width:11px; height:11px; border-radius:50%; flex:0 0 11px; }
+.lg i.ln { height:3px; width:16px; flex:0 0 16px; border-radius:2px; }
+.lg i.ln.dash { background-image:linear-gradient(90deg,currentColor 55%,transparent 0); background-size:6px 3px; }
+.lg.sep { margin-top:5px; padding-top:6px; border-top:1px solid #1a2b47; }
+
+/* Menú contextual */
+.ctx-topo { position:fixed; z-index:10000; min-width:220px; padding:5px; border-radius:11px; background:linear-gradient(180deg,rgba(16,29,51,.98),rgba(10,17,32,.98)); border:1px solid #22375a; box-shadow:0 10px 34px rgba(3,8,16,.55); }
+.ctx-title { font-size:9.5px; text-transform:uppercase; letter-spacing:1px; color:#6b8199; padding:6px 10px 5px; }
+.ctx-item { display:flex; align-items:center; gap:9px; width:100%; background:none; border:none; color:#e8eef5; padding:8px 10px; border-radius:7px; font-size:12px; cursor:pointer; text-align:left; }
+.ctx-item:hover { background:rgba(52,152,219,.24); }
+.ctx-item .ci { width:15px; text-align:center; }
+.ctx-item.del { color:#ffb0a6; }
+.ctx-item.del:hover { background:rgba(231,76,60,.26); }
+.ctx-item[disabled] { opacity:.35; cursor:not-allowed; }
+.ctx-sep { height:1px; background:#1a2b47; margin:4px 6px; }
+
+/* Handles de curva */
+.handle-curva { cursor:grab; }
+.handle-curva-ghost { cursor:grab; }

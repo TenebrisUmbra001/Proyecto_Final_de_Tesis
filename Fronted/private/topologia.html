@@ -6,20 +6,21 @@
     <link rel="stylesheet" href="/private/libs/xterm.css">
     <script src="/private/libs/xterm.js"></script>
     <script src="/private/libs/xterm-addon-fit.js"></script>
-    <!-- 🔧 NUEVO: librería para exportación Excel -->
     <script src="/private/libs/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="/private/libs/leaflet/leaflet.css">
     <meta charset="UTF-8" />
     <title>Mapa Conexion</title>
     <link rel="stylesheet" href="/private/Styles/topologia.css" />
 </head>
 
 <body>
+    <div id="mapa-fondo"></div>
+
     <header>
         <button id="btnVolver" class="BtnHeader">← Mapa</button>
         <h1 id="tituloMunicipio">Topología</h1>
         <span id="contadorEquipos"></span>
         <button id="btnConectar" class="BtnHeader conectar">🔌 Conectar</button>
-
         <span id="estadoConexion"></span>
         <span id="indicadorGuardado"></span>
         <button id="btnSalir" class="BtnHeader salir">Salir</button>
@@ -28,6 +29,20 @@
     <div id="migas"></div>
 
     <main>
+        <!-- 📋 Listado lateral del nivel actual -->
+        <aside id="rail" class="rail-topo">
+            <div class="rail-head">
+                <h2 id="railTitulo">Nivel</h2>
+                <button type="button" id="railToggle" class="rail-toggle" title="Plegar">◀</button>
+            </div>
+            <div class="rail-body">
+                <input type="search" id="railBuscar" placeholder="Buscar en este nivel…" autocomplete="off">
+                <div id="railResumen" class="rail-resumen"></div>
+                <div id="railLista" class="rail-lista"></div>
+            </div>
+        </aside>
+        <button type="button" id="railAbrir" class="rail-abrir" title="Abrir listado">📋</button>
+
         <section id="lienzo"></section>
 
         <aside id="panel">
@@ -37,8 +52,26 @@
             </div>
             <div id="barra-agregar"></div>
         </aside>
+
+        <!-- 🧭 Leyenda -->
+        <div id="leyenda" class="leyenda-topo">
+            <button type="button" class="leyenda-head" id="leyendaToggle"><span>Leyenda</span><i>▾</i></button>
+            <div class="leyenda-body">
+                <div class="lg"><i style="background:#21c063"></i>En línea</div>
+                <div class="lg"><i style="background:#f39c12"></i>Degradado</div>
+                <div class="lg"><i style="background:#e74c3c"></i>Sin respuesta</div>
+                <div class="lg"><i style="background:#95a5a6"></i>Sin monitoreo</div>
+                <div class="lg sep"><i class="ln" style="background:#ff9f1c"></i>Fibra óptica</div>
+                <div class="lg"><i class="ln" style="background:#70e000"></i>Ethernet</div>
+                <div class="lg"><i class="ln" style="background:#e74c3c"></i>Interrumpido ✕</div>
+                <div class="lg"><i class="ln dash" style="background:#22d3ee"></i>Inter-municipio</div>
+            </div>
+        </div>
     </main>
-    <!-- Modal para formularios -->
+
+    <!-- Menú contextual -->
+    <div id="ctxMenu" class="ctx-topo" hidden></div>
+
     <div id="modal"
         style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;justify-content:center;align-items:center;">
         <div
@@ -53,7 +86,100 @@
         </div>
     </div>
 
+    <script src="/private/libs/leaflet/leaflet.js"></script>
     <script src="/private/Javascripts/topologia.js"></script>
+
+    <script>
+    (function () {
+        function getQueryParams() {
+            var params = {}, search = window.location.search;
+            if (!search || search.length < 2) return params;
+            var s = search.substring(1), pairs = s.split('&');
+            for (var i = 0; i < pairs.length; i++) {
+                var idx = pairs[i].indexOf('=');
+                if (idx > 0) {
+                    params[decodeURIComponent(pairs[i].substring(0, idx))] =
+                        decodeURIComponent(pairs[i].substring(idx + 1).replace(/\+/g, ' '));
+                }
+            }
+            return params;
+        }
+        function norm(s) {
+            return String(s || '').toLowerCase().normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+        }
+        function canon(s) {
+            var n = norm(s), map = {
+                pinar: 'pinardelrio', pinardelrio: 'pinardelrio',
+                consolacion: 'consolaciondelsur', consolaciondelsur: 'consolaciondelsur',
+                sanjuan: 'sanjuanymartinez', sanjuanymartinez: 'sanjuanymartinez',
+                minas: 'minasdematahambre', minasdematahambre: 'minasdematahambre',
+                minasmatahambre: 'minasdematahambre',
+                palma: 'lapalma', lapalma: 'lapalma',
+                palacios: 'lospalacios', lospalacios: 'lospalacios',
+                sandino: 'sandino', mantua: 'mantua', guane: 'guane',
+                vinales: 'vinales', sanluis: 'sanluis'
+            };
+            return map[n] || n;
+        }
+        function featName(p) {
+            p = p || {};
+            return p.name || p['name:es'] || p.NAME || p.nombre || p.NAME_2 || p.NL_NAME_2 ||
+                (p.tags && p.tags.name) || '';
+        }
+        function quitarRuido(s) {
+            return canon(String(s || '').replace(/municipio|mun\.?|province|provincia/gi, ' ').trim());
+        }
+
+        var q = getQueryParams();
+        var munId = q.municipio || '';
+        var munNombre = q.nombre || '';
+        if (!munId && !munNombre) return;
+
+        var mapa = L.map('mapa-fondo', {
+            zoomControl: false, attributionControl: false,
+            dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+            boxZoom: false, keyboard: false, touchZoom: false
+        });
+
+        L.tileLayer('/private/tiles/{z}/{x}/{y}.png', {
+            maxZoom: 18, maxNativeZoom: 14, minZoom: 9,
+            errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+        }).addTo(mapa);
+
+        fetch('/private/geo/municipios.geojson', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (gj) {
+                if (!gj || !gj.features) return;
+                var objetivo = quitarRuido(munNombre || munId);
+                var f = null;
+                for (var i = 0; i < gj.features.length; i++) {
+                    var feat = gj.features[i];
+                    if (!feat || !feat.geometry) continue;
+                    if (quitarRuido(featName(feat.properties)) === objetivo) { f = feat; break; }
+                }
+                if (!f) {
+                    for (var j = 0; j < gj.features.length; j++) {
+                        var feat2 = gj.features[j];
+                        if (!feat2 || !feat2.geometry) continue;
+                        var n2 = quitarRuido(featName(feat2.properties));
+                        if (n2 && objetivo && (n2.indexOf(objetivo) >= 0 || objetivo.indexOf(n2) >= 0)) { f = feat2; break; }
+                    }
+                }
+                if (!f) return;
+                var layer = L.geoJSON(f, {
+                    style: { color: '#22d3ee', weight: 2.5, opacity: 0.9, fillColor: '#0f3460', fillOpacity: 0.35 },
+                    interactive: false
+                }).addTo(mapa);
+                var b = layer.getBounds();
+                if (b && b.isValid()) mapa.fitBounds(b.pad(0.15));
+                window.addEventListener('resize', function () {
+                    setTimeout(function () { mapa.invalidateSize(); if (b && b.isValid()) mapa.fitBounds(b.pad(0.15)); }, 100);
+                });
+            })
+            .catch(function (e) { console.warn('[GeoFondo]', e); });
+    })();
+    </script>
 </body>
 
 </html>

@@ -1,7 +1,6 @@
 // 🔧 Sin localStorage: todo por query string
 var SVGNS = 'http://www.w3.org/2000/svg';
 
-// Parser manual de query string (compatible Firefox 45)
 function getQueryParams() {
     var params = {};
     var search = window.location.search;
@@ -47,15 +46,14 @@ var ICONOS = {
 var VELOCIDADES = ['100 Mbps', '1 Gbps', '10 Gbps', '40 Gbps', '100 Gbps'];
 
 var VEL_MBPS = {
-    '100 Mbps': 100,
-    '1 Gbps': 1000,
-    '10 Gbps': 10000,
-    '40 Gbps': 40000,
-    '100 Gbps': 100000
+    '100 Mbps': 100, '1 Gbps': 1000, '10 Gbps': 10000, '40 Gbps': 40000, '100 Gbps': 100000
 };
 
 var tiempoAnim = 0;
 var rolUsuario = null;
+
+// Curvas: arrastre de puntos de control
+var arrastreCurva = null;
 
 function puedeEditar() {
     return rolUsuario === 'superadmin' || rolUsuario === 'admin';
@@ -64,37 +62,34 @@ function puedeEditar() {
 function aplicarPermisos() {
     var btnCon = document.getElementById('btnConectar');
     if (btnCon) btnCon.style.display = puedeEditar() ? '' : 'none';
-
     var estado = document.getElementById('estadoConexion');
     if (estado && !puedeEditar()) estado.textContent = '👁️ Modo lectura (solo consulta)';
-
     actualizarBarraAgregar();
+    renderListado();
 }
 
 function iniciarAnimacionConexiones() {
-    // 🔧 FIX: Retornar el ID del interval para poder limpiarlo después
     return setInterval(function () {
         tiempoAnim += 0.012;
         if (tiempoAnim > 1) tiempoAnim = 0;
-
         var svg = document.getElementById('capa-conexiones');
         if (!svg) return;
-
-        var lineas = svg.querySelectorAll('line.linea-conexion');
-        for (var i = 0; i < lineas.length; i++) {
-            var line = lineas[i];
-            var id = line.getAttribute('data-con');
-            var x1 = parseFloat(line.getAttribute('x1'));
-            var y1 = parseFloat(line.getAttribute('y1'));
-            var x2 = parseFloat(line.getAttribute('x2'));
-            var y2 = parseFloat(line.getAttribute('y2'));
-
+        var paths = svg.querySelectorAll('path.linea-conexion');
+        for (var i = 0; i < paths.length; i++) {
+            var p = paths[i];
+            var id = p.getAttribute('data-con');
+            var len = 0;
+            try { len = p.getTotalLength(); } catch (e) { continue; }
+            if (!len) continue;
             var puntos = svg.querySelectorAll('circle.paquete[data-con="' + id + '"]');
-            for (var p = 0; p < puntos.length; p++) {
-                var t = tiempoAnim + parseFloat(puntos[p].getAttribute('data-offset'));
+            for (var q = 0; q < puntos.length; q++) {
+                var t = tiempoAnim + parseFloat(puntos[q].getAttribute('data-offset'));
                 if (t > 1) t -= 1;
-                puntos[p].setAttribute('cx', x1 + (x2 - x1) * t);
-                puntos[p].setAttribute('cy', y1 + (y2 - y1) * t);
+                try {
+                    var pt = p.getPointAtLength(len * t);
+                    puntos[q].setAttribute('cx', pt.x);
+                    puntos[q].setAttribute('cy', pt.y);
+                } catch (e) { }
             }
         }
     }, 50);
@@ -102,17 +97,13 @@ function iniciarAnimacionConexiones() {
 
 function cargar() {
     document.getElementById('tituloMunicipio').textContent = 'Cargando...';
-
     if (!municipioId) {
         document.getElementById('tituloMunicipio').textContent = 'Selecciona un municipio desde el mapa';
         return true;
     }
-
     fetch('/api/topologia/db/' + encodeURIComponent(municipioId), { credentials: 'same-origin' })
         .then(function (r) {
-            if (r.status === 404) {
-                return { nombre: nombreMunicipioActual || 'Nuevo municipio', unidades: [], conexiones: [] };
-            }
+            if (r.status === 404) return { nombre: nombreMunicipioActual || 'Nuevo municipio', unidades: [], conexiones: [] };
             if (!r.ok) throw new Error('Error al cargar: ' + r.status);
             return r.json();
         })
@@ -120,33 +111,23 @@ function cargar() {
             datos = data;
             datos.unidades = datos.unidades || [];
             datos.conexiones = datos.conexiones || [];
-
             if (nombreMunicipioActual && (!datos.nombre || datos.nombre === 'Nuevo municipio' || datos.nombre === 'Sin nombre')) {
                 datos.nombre = nombreMunicipioActual;
                 guardar();
             }
-
             document.getElementById('tituloMunicipio').textContent = 'Información : ' + datos.nombre;
-
             renderizar();
-            
-            // 🔧 FIX: Limpiar intervals anteriores antes de crear nuevos (evita memory leaks)
             if (window.intervalAnimacion) clearInterval(window.intervalAnimacion);
             if (window.intervalEstados) clearInterval(window.intervalEstados);
-            
             window.intervalAnimacion = iniciarAnimacionConexiones();
             cargarEstados();
             window.intervalEstados = setInterval(cargarEstados, 30000);
-
-            if (enfocarIdInicial) {
-                setTimeout(function () { enfocarEquipo(enfocarIdInicial); }, 300);
-            }
+            if (enfocarIdInicial) setTimeout(function () { enfocarEquipo(enfocarIdInicial); }, 300);
         })
         .catch(function (e) {
             console.error('Error cargando topología:', e);
             alert('Error al cargar la topología desde el servidor. Revisa la conexión.');
         });
-
     return true;
 }
 
@@ -157,10 +138,7 @@ function guardar() {
         credentials: 'same-origin',
         body: JSON.stringify(datos)
     })
-        .then(function (r) {
-            if (!r.ok) throw new Error('Error al guardar');
-            return r.json();
-        })
+        .then(function (r) { if (!r.ok) throw new Error('Error al guardar'); return r.json(); })
         .then(function () {
             var ind = document.getElementById('indicadorGuardado');
             ind.textContent = '✔ Guardado en BD';
@@ -181,41 +159,28 @@ function esPC(tipo) { return tipo === 'pc'; }
 
 function esc(txt) {
     return String(txt == null ? '' : txt)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function copiarTexto(txt) {
     if (!txt) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(txt).catch(function () { fallbackCopiar(txt); });
-    } else {
-        fallbackCopiar(txt);
-    }
+    } else fallbackCopiar(txt);
 }
-
 function fallbackCopiar(txt) {
     var ta = document.createElement('textarea');
-    ta.value = txt;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); } catch (e) { }
     document.body.removeChild(ta);
 }
-
 function pegarTexto(cb) {
     if (navigator.clipboard && navigator.clipboard.readText) {
         navigator.clipboard.readText().then(cb).catch(function () { modalPegarManual(cb); });
-    } else {
-        modalPegarManual(cb);
-    }
+    } else modalPegarManual(cb);
 }
-
 function modalPegarManual(cb) {
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
@@ -228,18 +193,14 @@ function modalPegarManual(cb) {
     document.body.appendChild(overlay);
     document.getElementById('btnEnviarPegar').addEventListener('click', function () {
         var t = document.getElementById('txtPegarManual').value;
-        document.body.removeChild(overlay);
-        cb(t);
+        document.body.removeChild(overlay); cb(t);
     });
-    document.getElementById('btnCancelPegar').addEventListener('click', function () {
-        document.body.removeChild(overlay);
-    });
+    document.getElementById('btnCancelPegar').addEventListener('click', function () { document.body.removeChild(overlay); });
     document.getElementById('txtPegarManual').focus();
 }
 
 function abrirAccesoRemoto(tipo, ip, nombreSwitch, equipoId) {
     if (!ip) return;
-
     if (tipo === 'web') {
         var htmlW = '<p style="margin-bottom:12px;">¿Por qué protocolo responde <strong>' + esc(nombreSwitch || ip) + '</strong>?</p>';
         htmlW += '<label>Puerto (opcional, ej: 8080)</label>';
@@ -250,24 +211,16 @@ function abrirAccesoRemoto(tipo, ip, nombreSwitch, equipoId) {
         htmlW += '</div>';
         htmlW += '<button class="btn-del" id="btnCerrarWeb" style="margin-top:10px;background:#555;">Cerrar</button>';
         abrirModal('🌐 Admin Web de ' + esc(nombreSwitch || ip), htmlW);
-
         document.getElementById('btnWebHttps').addEventListener('click', function () {
-            var p = val('webPort');
-            window.open('https://' + ip + (p ? ':' + p : ''), '_blank');
+            var p = val('webPort'); window.open('https://' + ip + (p ? ':' + p : ''), '_blank');
         });
         document.getElementById('btnWebHttp').addEventListener('click', function () {
-            var p = val('webPort');
-            window.open('http://' + ip + (p ? ':' + p : ''), '_blank');
+            var p = val('webPort'); window.open('http://' + ip + (p ? ':' + p : ''), '_blank');
         });
         document.getElementById('btnCerrarWeb').addEventListener('click', cerrarModal);
         return;
     }
-
-    if (tipo === 'ssh') {
-        abrirConsolaSSH(ip, nombreSwitch || '', equipoId || '');
-        return;
-    }
-
+    if (tipo === 'ssh') { abrirConsolaSSH(ip, nombreSwitch || '', equipoId || ''); return; }
     if (tipo === 'telnet') {
         var cmdT = 'telnet ' + ip;
         var modalHtmlT = '<p>Copia este comando:</p>';
@@ -275,10 +228,7 @@ function abrirAccesoRemoto(tipo, ip, nombreSwitch, equipoId) {
         modalHtmlT += '<button class="btn-add" id="btnCopiarCmdT" style="margin-top:12px;">📋 Copiar</button>';
         modalHtmlT += '<button class="btn-del" id="btnCerrarCmdT" style="margin-top:8px;background:#555;">Cerrar</button>';
         abrirModal('📟 Telnet a ' + esc(nombreSwitch || ip), modalHtmlT);
-        document.getElementById('btnCopiarCmdT').addEventListener('click', function () {
-            copiarTexto(cmdT);
-            this.textContent = '✔ Copiado';
-        });
+        document.getElementById('btnCopiarCmdT').addEventListener('click', function () { copiarTexto(cmdT); this.textContent = '✔ Copiado'; });
         document.getElementById('btnCerrarCmdT').addEventListener('click', cerrarModal);
     }
 }
@@ -296,11 +246,8 @@ function abrirConsolaSSH(ip, nombreSwitch, equipoId) {
     loginHtml += '<button class="btn-add" id="btnConectarSSH" style="margin-right:8px;">Conectar</button>';
     loginHtml += '<button class="btn-del" id="btnCancelarSSH" style="background:#555;">Cancelar</button>';
     loginHtml += '</div></div>';
-
     abrirModal('SSH — ' + esc(nombreSwitch), loginHtml);
-
     document.getElementById('btnCancelarSSH').addEventListener('click', cerrarModal);
-
     var btnConectar = document.getElementById('btnConectarSSH');
     btnConectar.addEventListener('click', function () {
         var user = document.getElementById('sshUser').value.trim();
@@ -309,23 +256,15 @@ function abrirConsolaSSH(ip, nombreSwitch, equipoId) {
         if (!user || !pass) { err.textContent = 'Usuario y contraseña obligatorios.'; return; }
         iniciarTerminalSSH(ip, user, pass, nombreSwitch, equipoId);
     });
-
-    document.getElementById('sshPass').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') btnConectar.click();
-    });
+    document.getElementById('sshPass').addEventListener('keydown', function (e) { if (e.key === 'Enter') btnConectar.click(); });
     document.getElementById('sshUser').focus();
 }
 
 function iniciarTerminalSSH(ip, user, pass, nombreSwitch, equipoId) {
     var caja = document.getElementById('modalCuerpo').parentElement;
-    caja.style.width = '95vw';
-    caja.style.maxWidth = '1400px';
-    caja.style.height = '92vh';
-    caja.style.maxHeight = '95vh';
+    caja.style.width = '95vw'; caja.style.maxWidth = '1400px'; caja.style.height = '92vh'; caja.style.maxHeight = '95vh';
     var cuerpo = document.getElementById('modalCuerpo');
-    cuerpo.style.padding = '0';
-    cuerpo.style.overflow = 'hidden';
-
+    cuerpo.style.padding = '0'; cuerpo.style.overflow = 'hidden';
     cuerpo.innerHTML =
         '<div class="modal-terminal">' +
         '<div class="barra-superior">' +
@@ -335,111 +274,56 @@ function iniciarTerminalSSH(ip, user, pass, nombreSwitch, equipoId) {
         '</div>' +
         '<div id="xterm-container"></div>' +
         '</div>';
-
     var term = new Terminal({
-        cursorBlink: true,
-        fontSize: 15,
-        fontFamily: 'Consolas, "Courier New", monospace',
-        theme: { background: '#1e1e1e', foreground: '#0f0', cursor: '#0f0' },
-        scrollback: 5000
+        cursorBlink: true, fontSize: 15, fontFamily: 'Consolas, "Courier New", monospace',
+        theme: { background: '#1e1e1e', foreground: '#0f0', cursor: '#0f0' }, scrollback: 5000
     });
     var fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
     term.open(document.getElementById('xterm-container'));
     setTimeout(function () { fitAddon.fit(); term.focus(); }, 120);
-
     term.writeln('\x1b[36mConectando a ' + esc(ip) + '...\x1b[0m');
-
     var socket = io({ path: '/ssh-proxy', transports: ['websocket', 'polling'] });
-
     socket.on('connect', function () {
-        socket.emit('ssh-connect', {
-            host: ip,
-            port: 22,
-            user: user,
-            pass: pass,
-            equipoId: equipoId || '',
-            usuarioSistema: nombreUsuario || 'desconocido'
-        });
+        socket.emit('ssh-connect', { host: ip, port: 22, user: user, pass: pass, equipoId: equipoId || '', usuarioSistema: nombreUsuario || 'desconocido' });
     });
-
-    socket.on('ssh-ready', function () {
-        term.writeln('\x1b[32m✔ Conexión establecida.\x1b[0m\r\n');
-        term.focus();
-    });
-
+    socket.on('ssh-ready', function () { term.writeln('\x1b[32m✔ Conexión establecida.\x1b[0m\r\n'); term.focus(); });
     socket.on('ssh-data', function (data) { term.write(data); });
-
     socket.on('ssh-error', function (msg) {
         term.writeln('\r\n\x1b[31m❌ ' + esc(msg) + '\x1b[0m');
         setTimeout(function () { cerrarModal(); socket.disconnect(); }, 3000);
     });
-
     socket.on('ssh-close', function (msg) {
         term.writeln('\r\n\x1b[33m' + esc(msg) + '\x1b[0m');
         setTimeout(function () {
-            if (document.getElementById('modal').style.display === 'flex') {
-                socket.disconnect();
-                term.dispose();
-                cerrarModal();
-            }
+            if (document.getElementById('modal').style.display === 'flex') { socket.disconnect(); term.dispose(); cerrarModal(); }
         }, 2500);
     });
-
     term.onData(function (data) { socket.emit('ssh-input', data); });
-
     term.attachCustomKeyEventHandler(function (ev) {
         if (ev.type !== 'keydown') return true;
         var k = (ev.key || '').toLowerCase();
-
         if (ev.ctrlKey && (k === 'c') && !ev.shiftKey) {
-            if (term.hasSelection()) {
-                copiarTexto(term.getSelection());
-                ev.preventDefault();
-                return false;
-            }
+            if (term.hasSelection()) { copiarTexto(term.getSelection()); ev.preventDefault(); return false; }
             return true;
         }
-        if (ev.ctrlKey && (k === 'v') && !ev.shiftKey) {
-            pegarTexto(function (txt) { if (txt) socket.emit('ssh-input', txt); });
-            ev.preventDefault();
-            return false;
-        }
-        if (ev.ctrlKey && ev.shiftKey && k === 'c') {
-            copiarTexto(term.getSelection());
-            ev.preventDefault();
-            return false;
-        }
-        if (ev.ctrlKey && ev.shiftKey && k === 'v') {
-            pegarTexto(function (txt) { if (txt) socket.emit('ssh-input', txt); });
-            ev.preventDefault();
-            return false;
-        }
+        if (ev.ctrlKey && (k === 'v') && !ev.shiftKey) { pegarTexto(function (txt) { if (txt) socket.emit('ssh-input', txt); }); ev.preventDefault(); return false; }
+        if (ev.ctrlKey && ev.shiftKey && k === 'c') { copiarTexto(term.getSelection()); ev.preventDefault(); return false; }
+        if (ev.ctrlKey && ev.shiftKey && k === 'v') { pegarTexto(function (txt) { if (txt) socket.emit('ssh-input', txt); }); ev.preventDefault(); return false; }
         return true;
     });
-
-    var onResize = function () {
-        try {
-            fitAddon.fit();
-            socket.emit('ssh-resize', { cols: term.cols, rows: term.rows });
-        } catch (e) { }
-    };
+    var onResize = function () { try { fitAddon.fit(); socket.emit('ssh-resize', { cols: term.cols, rows: term.rows }); } catch (e) { } };
     window.addEventListener('resize', onResize);
-
     document.getElementById('btnCerrarTerm').addEventListener('click', function () {
         window.removeEventListener('resize', onResize);
-        socket.disconnect();
-        try { term.dispose(); } catch (e) { }
-        cerrarModal();
+        socket.disconnect(); try { term.dispose(); } catch (e) { } cerrarModal();
     });
 }
 
 function hijosDe(obj) {
     if (obj.tipo === 'unidad') return obj.edificios || [];
     if (obj.tipo === 'edificio') return obj.locales || [];
-    if (obj.tipo === 'local') {
-        return (obj.sublocales || []).concat(obj.equipos || []).concat(obj.servicios || []).concat(obj.pcs || []);
-    }
+    if (obj.tipo === 'local') return (obj.sublocales || []).concat(obj.equipos || []).concat(obj.servicios || []).concat(obj.pcs || []);
     return [];
 }
 
@@ -457,13 +341,9 @@ function buscarConPadres(id) {
         if (resultado) return;
         if (obj.id === id) { resultado = { obj: obj, padres: padres }; return; }
         var hijos = hijosDe(obj);
-        for (var i = 0; i < hijos.length; i++) {
-            rec(hijos[i], esContenedor(hijos[i].tipo) ? padres.concat([hijos[i]]) : padres);
-        }
+        for (var i = 0; i < hijos.length; i++) rec(hijos[i], esContenedor(hijos[i].tipo) ? padres.concat([hijos[i]]) : padres);
     }
-    for (var u = 0; u < datos.unidades.length && !resultado; u++) {
-        rec(datos.unidades[u], [datos.unidades[u]]);
-    }
+    for (var u = 0; u < datos.unidades.length && !resultado; u++) rec(datos.unidades[u], [datos.unidades[u]]);
     return resultado;
 }
 
@@ -474,26 +354,17 @@ function enfocarEquipo(id) {
     renderizar();
     seleccionar(r.obj);
     var el = document.querySelector('.elemento[data-id="' + id + '"]');
-    if (el) {
-        el.style.boxShadow = '0 0 0 4px #f39c12';
-        setTimeout(function () { el.style.boxShadow = ''; }, 3000);
-    }
+    if (el) { el.style.boxShadow = '0 0 0 4px #f39c12'; setTimeout(function () { el.style.boxShadow = ''; }, 3000); }
 }
 
 function buscarObjPorId(id) {
     function rec(obj) {
         if (obj.id === id) return obj;
         var hijos = hijosDe(obj);
-        for (var i = 0; i < hijos.length; i++) {
-            var r = rec(hijos[i]);
-            if (r) return r;
-        }
+        for (var i = 0; i < hijos.length; i++) { var r = rec(hijos[i]); if (r) return r; }
         return null;
     }
-    for (var u = 0; u < datos.unidades.length; u++) {
-        var r = rec(datos.unidades[u]);
-        if (r) return r;
-    }
+    for (var u = 0; u < datos.unidades.length; u++) { var r = rec(datos.unidades[u]); if (r) return r; }
     return null;
 }
 
@@ -506,17 +377,13 @@ function contieneId(obj, id) {
     return false;
 }
 
-function val(id) {
-    var el = document.getElementById(id);
-    return el ? el.value.trim() : '';
-}
+function val(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
 function esIpPlaceholder(ip) {
     if (!ip || !ip.trim()) return true;
     var t = ip.trim();
     return t === '1.1.1.1' || t === '0.0.0.0' || t === '255.255.255.255' || t.indexOf('127.') === 0;
 }
-
 function validarIP(ip) {
     var partes = ip.split('.');
     if (partes.length !== 4) return false;
@@ -527,25 +394,18 @@ function validarIP(ip) {
     }
     return true;
 }
-
 function ipYaExiste(ip, excluirId) {
     if (esIpPlaceholder(ip)) return false;
-
     function revisarObj(obj) {
         if (obj.id === excluirId) return false;
         if (obj.ip && obj.ip === ip) return true;
         var hijos = hijosDe(obj);
-        for (var j = 0; j < hijos.length; j++) {
-            if (revisarObj(hijos[j])) return true;
-        }
+        for (var j = 0; j < hijos.length; j++) if (revisarObj(hijos[j])) return true;
         return false;
     }
-    for (var u = 0; u < datos.unidades.length; u++) {
-        if (revisarObj(datos.unidades[u])) return true;
-    }
+    for (var u = 0; u < datos.unidades.length; u++) if (revisarObj(datos.unidades[u])) return true;
     return false;
 }
-
 function buscarConexionDe(id, excluirConId) {
     for (var i = 0; i < datos.conexiones.length; i++) {
         var c = datos.conexiones[i];
@@ -554,11 +414,7 @@ function buscarConexionDe(id, excluirConId) {
     }
     return null;
 }
-
-function pcYaConectada(pcId, excluirConId) {
-    return buscarConexionDe(pcId, excluirConId) !== null;
-}
-
+function pcYaConectada(pcId, excluirConId) { return buscarConexionDe(pcId, excluirConId) !== null; }
 function puertoUsadoEnEquipo(equipoId, puerto, excluirConId) {
     if (puerto == null || isNaN(puerto)) return false;
     for (var i = 0; i < datos.conexiones.length; i++) {
@@ -569,67 +425,43 @@ function puertoUsadoEnEquipo(equipoId, puerto, excluirConId) {
     }
     return false;
 }
-
 function ubicacionActual() {
     var partes = [datos.nombre];
     for (var i = 0; i < ruta.length; i++) partes.push(ruta[i].nombre);
     return partes.join(' > ');
 }
-
 function opcionesVel(sel) {
     var h = '';
-    for (var i = 0; i < VELOCIDADES.length; i++) {
-        h += '<option value="' + VELOCIDADES[i] + '"' + (VELOCIDADES[i] === sel ? ' selected' : '') + '>' + VELOCIDADES[i] + '</option>';
-    }
+    for (var i = 0; i < VELOCIDADES.length; i++) h += '<option value="' + VELOCIDADES[i] + '"' + (VELOCIDADES[i] === sel ? ' selected' : '') + '>' + VELOCIDADES[i] + '</option>';
     return h;
 }
-
 function opcionesVelFiltradas(velMaxima, sel) {
     var max = VEL_MBPS[velMaxima] || 100000;
     var h = '';
-    for (var i = 0; i < VELOCIDADES.length; i++) {
-        if (VEL_MBPS[VELOCIDADES[i]] <= max) {
-            h += '<option value="' + VELOCIDADES[i] + '"' + (VELOCIDADES[i] === sel ? ' selected' : '') + '>' + VELOCIDADES[i] + '</option>';
-        }
-    }
+    for (var i = 0; i < VELOCIDADES.length; i++) if (VEL_MBPS[VELOCIDADES[i]] <= max) h += '<option value="' + VELOCIDADES[i] + '"' + (VELOCIDADES[i] === sel ? ' selected' : '') + '>' + VELOCIDADES[i] + '</option>';
     return h;
 }
-
 function opcionesPrioridad(sel) {
     var selVal = sel || 'baja';
-    return ['alta', 'media', 'baja'].map(function (p) {
-        return '<option value="' + p + '"' + (selVal === p ? ' selected' : '') + '>' + p + '</option>';
-    }).join('');
+    return ['alta', 'media', 'baja'].map(function (p) { return '<option value="' + p + '"' + (selVal === p ? ' selected' : '') + '>' + p + '</option>'; }).join('');
 }
-
 function campo(label, nombreCampo, valor, tipo, readonly) {
     return '<label>' + label + '</label><input type="' + (tipo || 'text') + '" data-campo="' + nombreCampo + '" value="' + esc(valor == null ? '' : valor) + '"' + (readonly ? ' readonly' : '') + '>';
 }
-
 function sumarPuertoEnUso(obj, medio, delta) {
     if (!obj) return;
     if (obj.tipo === 'switch') {
-        if (medio === 'FO') {
-            obj.puertos_fibra_en_uso = Math.max(0, (parseInt(obj.puertos_fibra_en_uso, 10) || 0) + delta);
-        } else {
-            obj.puertos_ethernet_en_uso = Math.max(0, (parseInt(obj.puertos_ethernet_en_uso, 10) || 0) + delta);
-        }
+        if (medio === 'FO') obj.puertos_fibra_en_uso = Math.max(0, (parseInt(obj.puertos_fibra_en_uso, 10) || 0) + delta);
+        else obj.puertos_ethernet_en_uso = Math.max(0, (parseInt(obj.puertos_ethernet_en_uso, 10) || 0) + delta);
     }
-    if (obj.tipo === 'modem') {
-        obj.puerto_ethernet_en_uso = Math.max(0, (parseInt(obj.puerto_ethernet_en_uso, 10) || 0) + delta);
-    }
+    if (obj.tipo === 'modem') obj.puerto_ethernet_en_uso = Math.max(0, (parseInt(obj.puerto_ethernet_en_uso, 10) || 0) + delta);
 }
-
 function puertoDisponible(obj, medio, puerto) {
     if (!obj || puerto == null || isNaN(puerto)) return true;
-    if (obj.tipo === 'switch') {
-        if (medio === 'FO') return puerto <= (obj.puertos_fibra || 0);
-        return puerto <= (obj.puertos_ethernet || 0);
-    }
+    if (obj.tipo === 'switch') { if (medio === 'FO') return puerto <= (obj.puertos_fibra || 0); return puerto <= (obj.puertos_ethernet || 0); }
     if (obj.tipo === 'modem') return puerto <= (obj.puerto_ethernet || 0);
     return true;
 }
-
 function puertosUsadosReales(obj) {
     var res = { fibraMax: 0, ethMax: 0, fibraCount: 0, ethCount: 0 };
     for (var i = 0; i < datos.conexiones.length; i++) {
@@ -638,25 +470,16 @@ function puertosUsadosReales(obj) {
         if (c.desde === obj.id) puerto = c.puertoDesde;
         else if (c.hasta === obj.id) puerto = c.puertoHasta;
         else continue;
-        if (c.tipo === 'FO') {
-            res.fibraCount++;
-            if (puerto && puerto > res.fibraMax) res.fibraMax = puerto;
-        } else {
-            res.ethCount++;
-            if (puerto && puerto > res.ethMax) res.ethMax = puerto;
-        }
+        if (c.tipo === 'FO') { res.fibraCount++; if (puerto && puerto > res.fibraMax) res.fibraMax = puerto; }
+        else { res.ethCount++; if (puerto && puerto > res.ethMax) res.ethMax = puerto; }
     }
     return res;
 }
-
 function maxVelocidadConexiones(obj) {
     var max = 0;
     for (var i = 0; i < datos.conexiones.length; i++) {
         var c = datos.conexiones[i];
-        if (c.desde === obj.id || c.hasta === obj.id) {
-            var v = VEL_MBPS[c.velocidad] || 0;
-            if (v > max) max = v;
-        }
+        if (c.desde === obj.id || c.hasta === obj.id) { var v = VEL_MBPS[c.velocidad] || 0; if (v > max) max = v; }
     }
     return max;
 }
@@ -664,19 +487,16 @@ function maxVelocidadConexiones(obj) {
 var estadosRemotos = {};
 var desgloseActual = [];
 
-function estadoDe(id) {
-    var e = estadosRemotos[id];
-    return e ? e.estado : null;
+function estadoDe(id) { var e = estadosRemotos[id]; return e ? e.estado : null; }
+function colorEstado(id) {
+    var e = estadoDe(id);
+    return e === 'online' ? '#21c063' : e === 'offline' ? '#e74c3c' : e === 'degradado' ? '#f39c12' : '#95a5a6';
 }
 
 function cargarEstados() {
     fetch('/api/estados', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
-        .then(function (data) {
-            estadosRemotos = data || {};
-            actualizarIndicadores();
-            dibujarConexiones();
-        })
+        .then(function (data) { estadosRemotos = data || {}; actualizarIndicadores(); dibujarConexiones(); renderListado(); })
         .catch(function () { });
 }
 
@@ -698,14 +518,12 @@ function listaActual() {
     if (ruta.length === 0) return datos.unidades;
     if (ruta.length === 1) { ruta[0].edificios = ruta[0].edificios || []; return ruta[0].edificios; }
     if (ruta.length === 2) { ruta[1].locales = ruta[1].locales || []; return ruta[1].locales; }
-
     var actual = ruta[ruta.length - 1];
     return (actual.sublocales || []).concat(actual.equipos || []).concat(actual.servicios || []).concat(actual.pcs || []);
 }
 
 function contarEquiposRed() {
     var c = { 'switch': 0, 'modem': 0, 'transceiver': 0 };
-
     function contarEnObj(obj) {
         var hijos = hijosDe(obj);
         for (var i = 0; i < hijos.length; i++) {
@@ -714,7 +532,6 @@ function contarEquiposRed() {
             if (esContenedor(hijo.tipo)) contarEnObj(hijo);
         }
     }
-
     for (var u = 0; u < datos.unidades.length; u++) contarEnObj(datos.unidades[u]);
     return c;
 }
@@ -730,9 +547,7 @@ function renderizar() {
     var lienzo = document.getElementById('lienzo');
     lienzo.innerHTML = '';
     var lista = listaActual();
-    for (var i = 0; i < lista.length; i++) {
-        lienzo.appendChild(crearNodo(lista[i]));
-    }
+    for (var i = 0; i < lista.length; i++) lienzo.appendChild(crearNodo(lista[i]));
 
     var svg = document.createElementNS(SVGNS, 'svg');
     svg.id = 'capa-conexiones';
@@ -740,9 +555,7 @@ function renderizar() {
     svg.setAttribute('height', '2000');
     svg.setAttribute('pointer-events', 'none');
     svg.style.position = 'absolute';
-    svg.style.top = '0';
-    svg.style.left = '0';
-    svg.style.zIndex = '5';
+    svg.style.top = '0'; svg.style.left = '0'; svg.style.zIndex = '5';
     lienzo.appendChild(svg);
 
     dibujarConexiones();
@@ -751,6 +564,7 @@ function renderizar() {
     actualizarContador();
     marcarSeleccion();
     marcarOrigen();
+    renderListado();
 }
 
 function crearNodo(obj) {
@@ -761,10 +575,7 @@ function crearNodo(obj) {
     el.style.top = obj.y + 'px';
     el.style.width = obj.width + 'px';
     el.style.height = obj.height + 'px';
-
-    if (esContenedor(obj.tipo)) {
-        el.title = '1 clic: seleccionar / arrastrar — Doble clic: entrar';
-    }
+    if (esContenedor(obj.tipo)) el.title = '1 clic: seleccionar / arrastrar — Doble clic: entrar — Clic derecho: menú';
 
     var label = document.createElement('span');
     label.className = 'etiqueta';
@@ -773,17 +584,12 @@ function crearNodo(obj) {
 
     if (obj.ip) {
         var ip = document.createElement('span');
-        ip.className = 'ip';
-        ip.textContent = obj.ip;
+        ip.className = 'ip'; ip.textContent = obj.ip;
         el.appendChild(ip);
     }
 
     var handle = null;
-    if (puedeEditar()) {
-        handle = document.createElement('div');
-        handle.className = 'handle';
-        el.appendChild(handle);
-    }
+    if (puedeEditar()) { handle = document.createElement('div'); handle.className = 'handle'; el.appendChild(handle); }
 
     if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
         var st = estadoDe(obj.id) || 'desconocido';
@@ -792,50 +598,42 @@ function crearNodo(obj) {
         dot.title = 'Estado: ' + st;
         el.appendChild(dot);
     }
-
-    // 🔧 NUEVO Parte 3B: Indicador visual de conexión global para equipos de red
     if (esEquipo(obj.tipo)) {
         var dotGlobal = document.createElement('span');
         dotGlobal.className = 'conexion-global-indicador';
         dotGlobal.textContent = '🔗';
         dotGlobal.title = 'Puede tener conexión a otro municipio';
-        dotGlobal.style.marginLeft = '4px';
-        dotGlobal.style.fontSize = '14px';
-        dotGlobal.style.cursor = 'help';
+        dotGlobal.style.marginLeft = '4px'; dotGlobal.style.fontSize = '14px'; dotGlobal.style.cursor = 'help';
         el.appendChild(dotGlobal);
     }
 
     el.addEventListener('mousedown', function (e) {
         e.stopPropagation();
-
+        cerrarCtx();
         if (modoConexion) {
             if (esContenedor(obj.tipo)) {
-                document.getElementById('estadoConexion').textContent =
-                    'Doble clic para entrar en ' + (obj.descripcion || obj.nombre) + ' y elegir un equipo o PC';
+                document.getElementById('estadoConexion').textContent = 'Doble clic para entrar en ' + (obj.descripcion || obj.nombre) + ' y elegir un equipo o PC';
                 return;
             }
             manejarClickConexion(obj);
             return;
         }
-
         if (handle && e.target === handle) {
             redimension = { obj: obj, el: el, startX: e.clientX, startY: e.clientY, w: obj.width, h: obj.height };
         } else {
             seleccionar(obj);
-            if (puedeEditar()) {
-                arrastre = { obj: obj, el: el, startX: e.clientX, startY: e.clientY, x: obj.x, y: obj.y, moved: false };
-            }
+            if (puedeEditar()) arrastre = { obj: obj, el: el, startX: e.clientX, startY: e.clientY, x: obj.x, y: obj.y, moved: false };
         }
     });
 
     el.addEventListener('dblclick', function (e) {
         e.stopPropagation();
-        if (esContenedor(obj.tipo)) {
-            ruta.push(obj);
-            seleccion = null;
-            renderizar();
-            panelVacio();
-        }
+        if (esContenedor(obj.tipo)) { ruta.push(obj); seleccion = null; renderizar(); panelVacio(); }
+    });
+
+    el.addEventListener('contextmenu', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        ctxElemento(e, obj);
     });
 
     return el;
@@ -849,7 +647,6 @@ function marcarSeleccion() {
         if (el) el.classList.add('seleccionado');
     }
 }
-
 function marcarOrigen() {
     var els = document.querySelectorAll('.elemento');
     for (var i = 0; i < els.length; i++) els[i].classList.remove('origen-conexion');
@@ -864,13 +661,8 @@ function toggleModoConexion() {
     conexionOrigen = null;
     var btn = document.getElementById('btnConectar');
     var estado = document.getElementById('estadoConexion');
-    if (modoConexion) {
-        btn.classList.add('activo');
-        estado.textContent = 'Modo conexión: selecciona el ORIGEN';
-    } else {
-        btn.classList.remove('activo');
-        estado.textContent = '';
-    }
+    if (modoConexion) { btn.classList.add('activo'); estado.textContent = 'Modo conexión: selecciona el ORIGEN'; }
+    else { btn.classList.remove('activo'); estado.textContent = ''; }
     marcarOrigen();
 }
 
@@ -894,78 +686,65 @@ function manejarClickConexion(obj) {
 function representanteVisible(id) {
     var lista = listaActual();
     var i;
-    for (i = 0; i < lista.length; i++) {
-        if (lista[i].id === id) return lista[i];
-    }
-    for (i = 0; i < lista.length; i++) {
-        if (esContenedor(lista[i].tipo) && contieneId(lista[i], id)) return lista[i];
-    }
+    for (i = 0; i < lista.length; i++) if (lista[i].id === id) return lista[i];
+    for (i = 0; i < lista.length; i++) if (esContenedor(lista[i].tipo) && contieneId(lista[i], id)) return lista[i];
     return null;
 }
-
 function puntoCentro(rep) {
     if (!rep) return null;
     var el = document.querySelector('.elemento[data-id="' + rep.id + '"]');
     if (!el) return null;
-    return {
-        x: el.offsetLeft + el.offsetWidth / 2,
-        y: el.offsetTop + el.offsetHeight / 2
-    };
+    return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 };
 }
-
 function puntoBorde(rep, cx, cy, tx, ty) {
     var el = document.querySelector('.elemento[data-id="' + rep.id + '"]');
     if (!el) return { x: cx, y: cy };
-
-    var dx = tx - cx;
-    var dy = ty - cy;
+    var dx = tx - cx, dy = ty - cy;
     var len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return { x: cx, y: cy };
-
     if (rep.tipo === 'switch' || rep.tipo === 'modem' || rep.tipo === 'transceiver') {
         var r = (el.offsetWidth / 2) + 2;
         return { x: cx + (dx / len) * r, y: cy + (dy / len) * r };
     }
-
-    var w = (el.offsetWidth / 2) + 2;
-    var h = (el.offsetHeight / 2) + 2;
+    var w = (el.offsetWidth / 2) + 2, h = (el.offsetHeight / 2) + 2;
     var sx = (dx !== 0) ? w / Math.abs(dx) : Infinity;
     var sy = (dy !== 0) ? h / Math.abs(dy) : Infinity;
     var t = Math.min(sx, sy, 1);
     return { x: cx + dx * t, y: cy + dy * t };
 }
 
-function calcularIndiceConexion(conId, repAId, repBId) {
-    var claves = [];
-    
-    // Conexiones locales
-    for (var i = 0; i < datos.conexiones.length; i++) {
-        var c = datos.conexiones[i];
-        var rA = representanteVisible(c.desde);
-        var rB = representanteVisible(c.hasta);
-        if (!rA || !rB) continue;
-        var k1 = rA.id < rB.id ? rA.id + '|' + rB.id : rB.id + '|' + rA.id;
-        var k2 = repAId < repBId ? repAId + '|' + repBId : repBId + '|' + repAId;
-        if (k1 === k2) {
-            if (c.id === conId) return claves.length;
-            claves.push(c.id);
+/* ---------- curvas en px ---------- */
+function splinePx(pts, seg) {
+    if (pts.length < 3) return pts;
+    var P = [pts[0]].concat(pts, [pts[pts.length - 1]]), out = [];
+    for (var i = 0; i < P.length - 3; i++) {
+        var p0 = P[i], p1 = P[i + 1], p2 = P[i + 2], p3 = P[i + 3];
+        for (var t = 0; t < seg; t++) {
+            var s = t / seg, s2 = s * s, s3 = s2 * s;
+            out.push({
+                x: .5 * (2 * p1.x + (-p0.x + p2.x) * s + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * s2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * s3),
+                y: .5 * (2 * p1.y + (-p0.y + p2.y) * s + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * s2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * s3)
+            });
         }
     }
-    
-    // 🔧 NUEVO: También considera conexiones globales
-    if (window.conexionesGlobalesActivas) {
-        for (var j = 0; j < window.conexionesGlobalesActivas.length; j++) {
-            var cg = window.conexionesGlobalesActivas[j];
-            // Simplificación: si conecta los mismos municipios
-            if ((cg.desde_municipio_id === repAId && cg.hasta_municipio_id === repBId) ||
-                (cg.hasta_municipio_id === repAId && cg.desde_municipio_id === repBId)) {
-                if (cg.id === conId) return claves.length;
-                claves.push(cg.id);
-            }
-        }
+    out.push(pts[pts.length - 1]);
+    return out;
+}
+function pathD(pts) {
+    var d = '';
+    for (var i = 0; i < pts.length; i++) d += (i === 0 ? 'M' : 'L') + pts[i].x.toFixed(1) + ' ' + pts[i].y.toFixed(1);
+    return d;
+}
+function trazoPx(con, pA, pB, idx, n) {
+    var man = con.puntosControl, pts = [pA];
+    if (man && man.length) man.forEach(function (p) { pts.push({ x: p[0], y: p[1] }); });
+    else if (n > 1) {
+        var dx = pB.x - pA.x, dy = pB.y - pA.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+        var off = (idx - (n - 1) / 2) * 12;
+        pts.push({ x: (pA.x + pB.x) / 2 - dy / len * off, y: (pA.y + pB.y) / 2 + dx / len * off });
     }
-    
-    return 0;
+    pts.push(pB);
+    return splinePx(pts, 14);
 }
 
 function dibujarConexiones() {
@@ -973,38 +752,26 @@ function dibujarConexiones() {
     if (!svg) return;
     while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-    // 🔧 PASO 1: resolver geometría de CADA conexión (RESTAURADO: extremos fuera de vista)
     var preparadas = [];
     for (var i = 0; i < datos.conexiones.length; i++) {
         var con = datos.conexiones[i];
         var repA = representanteVisible(con.desde);
         var repB = representanteVisible(con.hasta);
-
         if (repA && repB && repA.id === repB.id) continue;
-
         var pA = repA ? puntoCentro(repA) : null;
         var pB = repB ? puntoCentro(repB) : null;
-
         if (!pA && !pB) continue;
-
         var extA = false, extB = false;
         if (!pA && pB) { pA = { x: 0, y: pB.y }; extA = true; }
         if (!pB && pA) { pB = { x: 0, y: pA.y }; extB = true; }
         if (!pA || !pB) continue;
-
-        var cA = { x: pA.x, y: pA.y };
-        var cB = { x: pB.x, y: pB.y };
+        var cA = { x: pA.x, y: pA.y }, cB = { x: pB.x, y: pB.y };
         if (repA) pA = puntoBorde(repA, cA.x, cA.y, cB.x, cB.y);
         if (repB) pB = puntoBorde(repB, cB.x, cB.y, cA.x, cA.y);
-
-        var kA = repA ? repA.id : 'EXT';
-        var kB = repB ? repB.id : 'EXT';
+        var kA = repA ? repA.id : 'EXT', kB = repB ? repB.id : 'EXT';
         var clave = kA < kB ? kA + '|' + kB : kB + '|' + kA;
-
         preparadas.push({ con: con, repA: repA, repB: repB, pA: pA, pB: pB, extA: extA, extB: extB, clave: clave, idx: 0 });
     }
-
-    // 🔧 PASO 2: contar y numerar conexiones por grupo (mismo par de extremos)
     var conteo = {};
     for (var p = 0; p < preparadas.length; p++) {
         var cl = preparadas[p].clave;
@@ -1012,55 +779,36 @@ function dibujarConexiones() {
         preparadas[p].idx = conteo[cl]++;
     }
 
-    var separacion = 12;
-
-    // 🔧 PASO 3: dibujar con offset CENTRADO (paralelas, sin solaparse)
     for (var q = 0; q < preparadas.length; q++) {
         (function (item) {
             try {
                 var con = item.con;
                 var total = conteo[item.clave];
-                var offset = total > 1 ? (item.idx - (total - 1) / 2) * separacion : 0;
-
-                var dx = item.pB.x - item.pA.x;
-                var dy = item.pB.y - item.pA.y;
-                var len = Math.sqrt(dx * dx + dy * dy);
-                var perpX = len > 0 ? -dy / len : 0;
-                var perpY = len > 0 ? dx / len : 0;
-                var offX = perpX * offset;
-                var offY = perpY * offset;
-
-                var pA = { x: item.pA.x + offX, y: item.pA.y + offY };
-                var pB = { x: item.pB.x + offX, y: item.pB.y + offY };
+                var pts = trazoPx(con, item.pA, item.pB, item.idx, total);
+                var d = pathD(pts);
 
                 var objA = buscarObjPorId(con.desde);
                 var objB = buscarObjPorId(con.hasta);
-
-                var stA = estadoDe(con.desde);
-                var stB = estadoDe(con.hasta);
+                var stA = estadoDe(con.desde), stB = estadoDe(con.hasta);
                 var caido = (stA === 'offline' || stB === 'offline');
                 var degradado = (!caido) && (stA === 'degradado' || stB === 'degradado');
-
                 var color = con.tipo === 'FO' ? '#ff9f1c' : '#70e000';
                 if (degradado) color = '#f39c12';
                 if (caido) color = '#e74c3c';
+                var grosor = (con.id === conexionSeleccionada) ? 7 : 5;
 
-                var grosor = (con.id === conexionSeleccionada) ? 8 : 6;
-
-                var line = document.createElementNS(SVGNS, 'line');
-                line.setAttribute('x1', pA.x); line.setAttribute('y1', pA.y);
-                line.setAttribute('x2', pB.x); line.setAttribute('y2', pB.y);
+                var line = document.createElementNS(SVGNS, 'path');
+                line.setAttribute('d', d);
                 line.setAttribute('class', 'linea-conexion');
                 line.setAttribute('data-con', con.id);
                 line.setAttribute('stroke', color);
                 line.setAttribute('stroke-width', grosor);
+                line.setAttribute('fill', 'none');
                 line.setAttribute('stroke-linecap', 'round');
                 line.setAttribute('pointer-events', 'none');
                 if (item.extA || item.extB) line.setAttribute('opacity', '0.6');
-
                 if (caido) line.setAttribute('stroke-dasharray', '6 8');
                 else if (degradado) line.setAttribute('stroke-dasharray', '12 6');
-
                 svg.appendChild(line);
 
                 if (!caido) {
@@ -1072,36 +820,27 @@ function dibujarConexiones() {
                         c.setAttribute('data-offset', (pp / 3).toFixed(2));
                         c.setAttribute('fill', '#ffffff');
                         c.setAttribute('pointer-events', 'none');
-                        c.setAttribute('cx', pA.x);
-                        c.setAttribute('cy', pA.y);
+                        c.setAttribute('cx', pts[0].x); c.setAttribute('cy', pts[0].y);
                         if (item.extA || item.extB) c.setAttribute('opacity', '0.6');
                         svg.appendChild(c);
                     }
                 }
-
                 if (caido) {
-                    var mx = (pA.x + pB.x) / 2;
-                    var my = (pA.y + pB.y) / 2;
+                    var mx = (item.pA.x + item.pB.x) / 2, my = (item.pA.y + item.pB.y) / 2;
                     var xmark = document.createElementNS(SVGNS, 'text');
-                    xmark.setAttribute('x', mx);
-                    xmark.setAttribute('y', my + 6);
+                    xmark.setAttribute('x', mx); xmark.setAttribute('y', my + 6);
                     xmark.setAttribute('text-anchor', 'middle');
                     xmark.setAttribute('fill', '#e74c3c');
-                    xmark.setAttribute('font-size', '20');
-                    xmark.setAttribute('font-weight', 'bold');
+                    xmark.setAttribute('font-size', '20'); xmark.setAttribute('font-weight', 'bold');
                     xmark.setAttribute('pointer-events', 'none');
                     xmark.textContent = '✕';
                     svg.appendChild(xmark);
                 }
-
                 if (con.puertoDesde != null && item.repA) {
                     var lblA = document.createElementNS(SVGNS, 'text');
-                    lblA.setAttribute('x', pA.x);
-                    lblA.setAttribute('y', pA.y - 8);
-                    lblA.setAttribute('text-anchor', 'middle');
-                    lblA.setAttribute('fill', '#fff');
-                    lblA.setAttribute('font-size', '10');
-                    lblA.setAttribute('font-weight', 'bold');
+                    lblA.setAttribute('x', item.pA.x); lblA.setAttribute('y', item.pA.y - 8);
+                    lblA.setAttribute('text-anchor', 'middle'); lblA.setAttribute('fill', '#fff');
+                    lblA.setAttribute('font-size', '10'); lblA.setAttribute('font-weight', 'bold');
                     lblA.setAttribute('pointer-events', 'none');
                     lblA.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
                     lblA.textContent = 'p' + con.puertoDesde;
@@ -1109,26 +848,24 @@ function dibujarConexiones() {
                 }
                 if (con.puertoHasta != null && item.repB) {
                     var lblB = document.createElementNS(SVGNS, 'text');
-                    lblB.setAttribute('x', pB.x);
-                    lblB.setAttribute('y', pB.y - 8);
-                    lblB.setAttribute('text-anchor', 'middle');
-                    lblB.setAttribute('fill', '#fff');
-                    lblB.setAttribute('font-size', '10');
-                    lblB.setAttribute('font-weight', 'bold');
+                    lblB.setAttribute('x', item.pB.x); lblB.setAttribute('y', item.pB.y - 8);
+                    lblB.setAttribute('text-anchor', 'middle'); lblB.setAttribute('fill', '#fff');
+                    lblB.setAttribute('font-size', '10'); lblB.setAttribute('font-weight', 'bold');
                     lblB.setAttribute('pointer-events', 'none');
                     lblB.setAttribute('style', 'text-shadow:1px 1px 2px #000;');
                     lblB.textContent = 'p' + con.puertoHasta;
                     svg.appendChild(lblB);
                 }
 
-                var hit = document.createElementNS(SVGNS, 'line');
-                hit.setAttribute('x1', pA.x); hit.setAttribute('y1', pA.y);
-                hit.setAttribute('x2', pB.x); hit.setAttribute('y2', pB.y);
+                var hit = document.createElementNS(SVGNS, 'path');
+                hit.setAttribute('d', d);
                 hit.setAttribute('class', 'linea-hit');
                 hit.setAttribute('stroke', 'transparent');
                 hit.setAttribute('stroke-width', '16');
+                hit.setAttribute('fill', 'none');
                 hit.setAttribute('stroke-linecap', 'round');
                 hit.setAttribute('pointer-events', 'stroke');
+                hit.style.cursor = 'pointer';
 
                 var title = document.createElementNS(SVGNS, 'title');
                 var pA_txt = (con.puertoDesde != null) ? ' [puerto ' + con.puertoDesde + ']' : '';
@@ -1149,8 +886,16 @@ function dibujarConexiones() {
                     dibujarConexiones();
                     mostrarPanelConexion(con);
                 });
-
+                hit.addEventListener('contextmenu', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    ctxConexion(e, con);
+                });
                 svg.appendChild(hit);
+
+                // Handles de curva (solo conexión seleccionada y editable)
+                if (con.id === conexionSeleccionada && puedeEditar()) {
+                    dibujarHandles(svg, con, item);
+                }
             } catch (err) {
                 console.error('Error dibujando conexión ' + con.id + ':', err);
             }
@@ -1160,6 +905,58 @@ function dibujarConexiones() {
     dibujarConexionesGlobalesEnTopologia();
 }
 
+function dibujarHandles(svg, con, item) {
+    var man = con.puntosControl || [];
+    // puntos sólidos
+    man.forEach(function (p, i) {
+        var h = document.createElementNS(SVGNS, 'circle');
+        h.setAttribute('cx', p[0]); h.setAttribute('cy', p[1]); h.setAttribute('r', 7);
+        h.setAttribute('class', 'handle-curva');
+        h.setAttribute('data-con', con.id); h.setAttribute('data-idx', i);
+        h.setAttribute('fill', '#22d3ee'); h.setAttribute('stroke', '#0b1524'); h.setAttribute('stroke-width', 2);
+        h.setAttribute('pointer-events', 'all');
+        h.style.cursor = 'grab';
+        h.addEventListener('mousedown', function (e) {
+            e.stopPropagation(); e.preventDefault();
+            arrastreCurva = { con: con, idx: i, ghost: false };
+        });
+        h.addEventListener('contextmenu', function (e) {
+            e.preventDefault(); e.stopPropagation();
+            man.splice(i, 1);
+            if (!man.length) delete con.puntosControl; else con.puntosControl = man;
+            guardar(); dibujarConexiones();
+        });
+        svg.appendChild(h);
+    });
+    // puntos fantasma en el medio de cada tramo
+    var anclas = [item.pA].concat(man.map(function (p) { return { x: p[0], y: p[1] }; }), [item.pB]);
+    for (var t = 0; t < anclas.length - 1; t++) {
+        (function (tramo) {
+            var A = anclas[tramo], B = anclas[tramo + 1];
+            var mid = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+            var g = document.createElementNS(SVGNS, 'circle');
+            g.setAttribute('cx', mid.x); g.setAttribute('cy', mid.y); g.setAttribute('r', 5.5);
+            g.setAttribute('class', 'handle-curva-ghost');
+            g.setAttribute('fill', 'rgba(34,211,238,0.35)');
+            g.setAttribute('stroke', '#22d3ee'); g.setAttribute('stroke-width', 1.5);
+            g.setAttribute('stroke-dasharray', '3 2');
+            g.setAttribute('pointer-events', 'all');
+            g.style.cursor = 'grab';
+            var tt = document.createElementNS(SVGNS, 'title');
+            tt.textContent = 'Arrastra para curvar';
+            g.appendChild(tt);
+            g.addEventListener('mousedown', function (e) {
+                e.stopPropagation(); e.preventDefault();
+                if (!con.puntosControl) con.puntosControl = [];
+                con.puntosControl.splice(tramo, 0, [mid.x, mid.y]);
+                arrastreCurva = { con: con, idx: tramo, ghost: true };
+                dibujarConexiones();
+            });
+            svg.appendChild(g);
+        })(t);
+    }
+}
+
 function dibujarConexionesGlobalesEnTopologia() {
     fetch('/api/topologia/conexiones-globales', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
@@ -1167,37 +964,23 @@ function dibujarConexionesGlobalesEnTopologia() {
             window.conexionesGlobalesActivas = globales;
             var svg = document.getElementById('capa-conexiones');
             if (!svg) return;
-            
             for (var i = 0; i < globales.length; i++) {
                 var cg = globales[i];
                 var esDesdeAqui = cg.desde_municipio_id === municipioId;
                 var esHastaAqui = cg.hasta_municipio_id === municipioId;
-                
                 if (!esDesdeAqui && !esHastaAqui) continue;
-                
                 var equipoLocalId = esDesdeAqui ? cg.desde_id : cg.hasta_id;
                 var munRemoto = esDesdeAqui ? cg.hasta_municipio_nombre : cg.desde_municipio_nombre;
                 var munRemotoId = esDesdeAqui ? cg.hasta_municipio_id : cg.desde_municipio_id;
                 var eqRemotoId = esDesdeAqui ? cg.hasta_id : cg.desde_id;
-                
                 var repLocal = representanteVisible(equipoLocalId);
                 if (!repLocal) continue;
-                
                 var pLocal = puntoCentro(repLocal);
                 if (!pLocal) continue;
-                
-                // Línea que sale del equipo hacia el borde derecho (o izquierdo si es destino)
-                var pRemoto = {
-                    x: esDesdeAqui ? 3000 : 0,
-                    y: pLocal.y
-                };
-                
-                // 🔧 Línea clickeable con todos los datos
+                var pRemoto = { x: esDesdeAqui ? 3000 : 0, y: pLocal.y };
                 var line = document.createElementNS(SVGNS, 'line');
-                line.setAttribute('x1', pLocal.x);
-                line.setAttribute('y1', pLocal.y);
-                line.setAttribute('x2', pRemoto.x);
-                line.setAttribute('y2', pRemoto.y);
+                line.setAttribute('x1', pLocal.x); line.setAttribute('y1', pLocal.y);
+                line.setAttribute('x2', pRemoto.x); line.setAttribute('y2', pRemoto.y);
                 line.setAttribute('stroke', cg.tipo === 'FO' ? '#ff9f1c' : '#70e000');
                 line.setAttribute('stroke-width', '5');
                 line.setAttribute('stroke-dasharray', '12 8');
@@ -1205,86 +988,54 @@ function dibujarConexionesGlobalesEnTopologia() {
                 line.setAttribute('opacity', '0.85');
                 line.setAttribute('pointer-events', 'stroke');
                 line.style.cursor = 'pointer';
-                
-                // 🔧 Mejora: Posicionar el label más lejos del centro para evitar solapamiento
                 var offsetLabelX = esDesdeAqui ? 40 : -40;
-                var offsetLabelY = -15;
-                
-                // Etiqueta visual "🔗" cerca del equipo
                 var lbl = document.createElementNS(SVGNS, 'text');
-                lbl.setAttribute('x', pLocal.x + offsetLabelX);
-                lbl.setAttribute('y', pLocal.y + offsetLabelY);
-                lbl.setAttribute('text-anchor', 'middle');
-                lbl.setAttribute('fill', '#ff9f1c');
-                lbl.setAttribute('font-size', '14');
-                lbl.setAttribute('font-weight', 'bold');
+                lbl.setAttribute('x', pLocal.x + offsetLabelX); lbl.setAttribute('y', pLocal.y - 15);
+                lbl.setAttribute('text-anchor', 'middle'); lbl.setAttribute('fill', '#ff9f1c');
+                lbl.setAttribute('font-size', '14'); lbl.setAttribute('font-weight', 'bold');
                 lbl.setAttribute('pointer-events', 'none');
                 lbl.setAttribute('style', 'text-shadow:1px 1px 3px #000;');
                 lbl.textContent = '🔗 ' + munRemoto;
-                
                 var title = document.createElementNS(SVGNS, 'title');
-                title.textContent = '🔗 CONEXIÓN INTER-MUNICIPIOS\n' +
-                    'Destino: ' + munRemoto + '\n' +
-                    'Tipo: ' + cg.tipo + '\n' +
-                    'Velocidad: ' + cg.velocidad +
+                title.textContent = '🔗 CONEXIÓN INTER-MUNICIPIOS\nDestino: ' + munRemoto + '\nTipo: ' + cg.tipo + '\nVelocidad: ' + cg.velocidad +
                     (cg.puerto_desde ? '\nPuerto local: ' + cg.puerto_desde : '') +
                     (cg.puerto_hasta ? '\nPuerto remoto: ' + cg.puerto_hasta : '') +
                     '\n\nClick para ir al otro municipio →';
                 line.appendChild(title);
-                
-                // 🔧 Click: abre topología del otro municipio enfocado en el equipo remoto
-                (function (cgData, mId, eId) {
+                (function (mId, eId) {
                     line.addEventListener('click', function (e) {
                         e.stopPropagation();
-                        var url = '/private/topologia.html?municipio=' + encodeURIComponent(mId) + 
-                                  '&enfocar=' + encodeURIComponent(eId);
-                        window.open(url, '_blank');
+                        window.open('/private/topologia.html?municipio=' + encodeURIComponent(mId) + '&enfocar=' + encodeURIComponent(eId), '_blank');
                     });
-                })(cg, munRemotoId, eqRemotoId);
-                
+                })(munRemotoId, eqRemotoId);
                 svg.appendChild(line);
                 svg.appendChild(lbl);
             }
         })
-        .catch(function (e) { 
-            console.error('Error cargando conexiones globales:', e);
-        });
+        .catch(function (e) { console.error('Error cargando conexiones globales:', e); });
 }
 
 function abrirModal(titulo, contenido) {
     var modal = document.getElementById('modal');
     var caja = document.getElementById('modalCuerpo').parentElement;
     var cuerpo = document.getElementById('modalCuerpo');
-
-    caja.style.width = '500px';
-    caja.style.maxWidth = '90%';
-    caja.style.maxHeight = '90vh';
-    caja.style.height = '';
-    cuerpo.style.padding = '20px';
-    cuerpo.style.overflowY = 'auto';
-
+    caja.style.width = '500px'; caja.style.maxWidth = '90%'; caja.style.maxHeight = '90vh'; caja.style.height = '';
+    cuerpo.style.padding = '20px'; cuerpo.style.overflowY = 'auto';
     document.getElementById('modalTitulo').textContent = titulo;
     cuerpo.innerHTML = contenido;
     modal.style.display = 'flex';
 }
-
 function cerrarModal() {
     document.getElementById('modal').style.display = 'none';
     var caja = document.getElementById('modalCuerpo').parentElement;
-    caja.style.width = '500px';
-    caja.style.maxWidth = '90%';
-    caja.style.maxHeight = '90vh';
-    caja.style.height = '';
+    caja.style.width = '500px'; caja.style.maxWidth = '90%'; caja.style.maxHeight = '90vh'; caja.style.height = '';
     var cuerpo = document.getElementById('modalCuerpo');
-    cuerpo.style.padding = '20px';
-    cuerpo.style.overflowY = 'auto';
+    cuerpo.style.padding = '20px'; cuerpo.style.overflowY = 'auto';
 }
 
 function mostrarFormulario(tipo, padre) {
     var nombres = { 'unidad': 'UNIDAD', 'edificio': 'EDIFICIO', 'local': 'LOCAL', 'equipo': 'EQUIPO DE RED', 'servicio': 'SERVICIO', 'pc': 'PC' };
-
     var html = '<p id="msgError" style="color:red;font-size:12px;"></p>';
-
     if (tipo === 'equipo') {
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin-bottom:10px;">— Datos generales del equipo —</h4>';
         html += '<label>PR / Código *</label><input type="text" id="fPR" placeholder="Ej: SW-001">';
@@ -1293,43 +1044,28 @@ function mostrarFormulario(tipo, padre) {
         html += '<label>Modelo *</label><input type="text" id="fModelo" placeholder="Ej: Catalyst 2960">';
         html += '<label>Descripción *</label><input type="text" id="fDescripcion" placeholder="Nombre visible en el mapa">';
         html += '<label>Ubicación</label><input type="text" id="fUbic" value="' + ubicacionActual() + '" readonly>';
-
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin:15px 0 10px 0;">— Tipo de equipo —</h4>';
-        html += '<label>Tipo</label><select id="fTipo">' +
-            '<option value="switch">Switch</option>' +
-            '<option value="modem">Modem</option>' +
-            '<option value="transceiver">Transceiver</option></select>';
-
+        html += '<label>Tipo</label><select id="fTipo"><option value="switch">Switch</option><option value="modem">Modem</option><option value="transceiver">Transceiver</option></select>';
         html += '<div id="secSwitch" style="margin-top:10px;padding:10px;background:#f0f4f8;border-radius:6px;">';
         html += '<h4 style="margin-bottom:8px;color:#0f3460;">Datos del switch</h4>';
         html += '<label>IP *</label><input type="text" id="fIP" value="192.168.1.">';
-        html += '<label>Tipo de gestión</label><select id="fTipoGestion">' +
-            '<option>SSH</option><option>Telnet</option><option>Web</option><option>No gestionable</option></select>';
+        html += '<label>Tipo de gestión</label><select id="fTipoGestion"><option>SSH</option><option>Telnet</option><option>Web</option><option>No gestionable</option></select>';
         html += '<label>Velocidad de enlace</label><select id="fVelEnlace">' + opcionesVel('1 Gbps') + '</select>';
         html += '<label>Puertos de fibra</label><input type="number" id="fPuertosFibra" value="0" min="0">';
         html += '<label>Puertos ethernet</label><input type="number" id="fPuertosEth" value="24" min="0">';
         html += '</div>';
-
         html += '<div id="secModem" style="display:none;margin-top:10px;padding:10px;background:#f0f4f8;border-radius:6px;">';
         html += '<h4 style="margin-bottom:8px;color:#0f3460;">Datos del modem</h4>';
         html += '<label>Puertos ethernet</label><input type="number" id="fPuertosEthModem" value="1" min="0">';
         html += '<label style="margin-top:8px;"><input type="checkbox" id="fAdsl"> Usa ADSL</label>';
         html += '</div>';
-
         html += '<div id="secTrans" style="display:none;margin-top:10px;padding:10px;background:#f0f4f8;border-radius:6px;">';
-        html += '<p style="color:#555;">Los transceiver no requieren datos adicionales.</p>';
-        html += '</div>';
-
+        html += '<p style="color:#555;">Los transceiver no requieren datos adicionales.</p></div>';
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
-        html += '<label>Modo de monitoreo</label><select id="fMonitoreo">' +
-            '<option value="ping">Ping / SSH (normal)</option>' +
-            '<option value="inferido">Inferido (switch cascada / sin gestión)</option>' +
-            '<option value="ninguno">No monitorear (almacén / inactivo)</option></select>';
+        html += '<label>Modo de monitoreo</label><select id="fMonitoreo"><option value="ping">Ping / SSH (normal)</option><option value="inferido">Inferido (switch cascada / sin gestión)</option><option value="ninguno">No monitorear (almacén / inactivo)</option></select>';
     }
     else if (tipo === 'servicio') {
-        html += '<label>Tipo de servicio</label><select id="fTipoServ">' +
-            '<option value="bd">Base de datos</option><option value="dns">DNS</option>' +
-            '<option value="firewall">Firewall</option><option value="servidor">Servidor</option></select>';
+        html += '<label>Tipo de servicio</label><select id="fTipoServ"><option value="bd">Base de datos</option><option value="dns">DNS</option><option value="firewall">Firewall</option><option value="servidor">Servidor</option></select>';
         html += '<label>Descripción *</label><input type="text" id="fDescripcion">';
         html += '<label>IP *</label><input type="text" id="fIP" value="192.168.1.">';
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
@@ -1343,9 +1079,7 @@ function mostrarFormulario(tipo, padre) {
         html += '<label>Prioridad de alertas</label><select id="fPrioridad">' + opcionesPrioridad('baja') + '</select>';
         html += '<p style="margin-top:10px;color:#555;font-size:12px;">Luego usa 🔌 Conectar para enlazarla a un switch.</p>';
     }
-    else {
-        html += '<label>Nombre *</label><input type="text" id="fDescripcion">';
-    }
+    else html += '<label>Nombre *</label><input type="text" id="fDescripcion">';
 
     abrirModal('Nuevo: ' + nombres[tipo], html);
 
@@ -1358,62 +1092,34 @@ function mostrarFormulario(tipo, padre) {
         });
     }
 
-    var botones = '<div style="margin-top:20px;">' +
-        '<button class="btn-add" id="btnConfirmarCrear" style="margin-right:8px;">Crear</button>' +
-        '<button class="btn-del" id="btnCancelarCrear">Cancelar</button>' +
-        '</div>';
+    var botones = '<div style="margin-top:20px;"><button class="btn-add" id="btnConfirmarCrear" style="margin-right:8px;">Crear</button><button class="btn-del" id="btnCancelarCrear">Cancelar</button></div>';
     document.getElementById('modalCuerpo').innerHTML += botones;
-
     document.getElementById('btnCancelarCrear').addEventListener('click', cerrarModal);
-
     document.getElementById('btnConfirmarCrear').addEventListener('click', function () {
         var err = document.getElementById('msgError');
         err.textContent = '';
-
         var descripcion = val('fDescripcion');
         if (!descripcion) { err.textContent = 'La descripción es obligatoria.'; return; }
-
         var obj = null;
         var t = tamanosPorTipo(tipo);
-
         if (tipo === 'equipo') {
             var tipoFinal = document.getElementById('fTipo').value;
             var pr = val('fPR'), marca = val('fMarca'), modelo = val('fModelo');
-
-            if (!pr || !marca || !modelo) {
-                err.textContent = 'PR, marca y modelo son obligatorios (*).';
-                return;
-            }
+            if (!pr || !marca || !modelo) { err.textContent = 'PR, marca y modelo son obligatorios (*).'; return; }
             var modoMon = val('fMonitoreo') || 'ping';
             if (tipoFinal === 'switch' && modoMon !== 'ninguno') {
-                if (!validarIP(val('fIP'))) {
-                    err.textContent = 'IP inválida. Formato esperado: 192.168.1.10';
-                    return;
-                }
-                if (ipYaExiste(val('fIP'), null)) {
-                    err.textContent = 'La IP ' + val('fIP') + ' ya está en uso en este municipio.';
-                    return;
-                }
+                if (!validarIP(val('fIP'))) { err.textContent = 'IP inválida. Formato esperado: 192.168.1.10'; return; }
+                if (ipYaExiste(val('fIP'), null)) { err.textContent = 'La IP ' + val('fIP') + ' ya está en uso en este municipio.'; return; }
             }
-
             t = tamanosPorTipo(tipoFinal);
             obj = {
-                id: tipoFinal + '-' + Date.now(),
-                tipo: tipoFinal,
-                descripcion: descripcion,
-                nombre: descripcion,
-                pr: pr,
-                sello: val('fSello'),
-                marca: marca,
-                modelo: modelo,
-                fecha_instalacion: new Date().toISOString(),
-                ubicacion: val('fUbic'),
+                id: tipoFinal + '-' + Date.now(), tipo: tipoFinal, descripcion: descripcion, nombre: descripcion,
+                pr: pr, sello: val('fSello'), marca: marca, modelo: modelo,
+                fecha_instalacion: new Date().toISOString(), ubicacion: val('fUbic'),
                 prioridad: val('fPrioridad') || 'baja',
-                x: 50 + Math.floor(Math.random() * 150),
-                y: 50 + Math.floor(Math.random() * 100),
+                x: 50 + Math.floor(Math.random() * 150), y: 50 + Math.floor(Math.random() * 100),
                 width: t.w, height: t.h
             };
-
             if (tipoFinal === 'switch') {
                 obj.ip = val('fIP');
                 obj.tipo_gestion = val('fTipoGestion');
@@ -1433,66 +1139,22 @@ function mostrarFormulario(tipo, padre) {
         }
         else if (tipo === 'servicio') {
             var tipoServ = document.getElementById('fTipoServ').value;
-            if (!validarIP(val('fIP'))) {
-                err.textContent = 'IP inválida. Formato esperado: 192.168.1.10';
-                return;
-            }
-            if (ipYaExiste(val('fIP'), null)) {
-                err.textContent = 'La IP ' + val('fIP') + ' ya está en uso en este municipio.';
-                return;
-            }
+            if (!validarIP(val('fIP'))) { err.textContent = 'IP inválida. Formato esperado: 192.168.1.10'; return; }
+            if (ipYaExiste(val('fIP'), null)) { err.textContent = 'La IP ' + val('fIP') + ' ya está en uso en este municipio.'; return; }
             t = tamanosPorTipo(tipoServ);
-            obj = {
-                id: tipoServ + '-' + Date.now(),
-                tipo: tipoServ,
-                descripcion: descripcion,
-                nombre: descripcion,
-                ip: val('fIP'),
-                prioridad: val('fPrioridad') || 'baja',
-                x: 50 + Math.floor(Math.random() * 150),
-                y: 50 + Math.floor(Math.random() * 100),
-                width: t.w, height: t.h
-            };
+            obj = { id: tipoServ + '-' + Date.now(), tipo: tipoServ, descripcion: descripcion, nombre: descripcion, ip: val('fIP'), prioridad: val('fPrioridad') || 'baja', x: 50 + Math.floor(Math.random() * 150), y: 50 + Math.floor(Math.random() * 100), width: t.w, height: t.h };
         }
         else if (tipo === 'pc') {
-            var prPC = val('fPR');
-            var ipPC = val('fIP');
+            var prPC = val('fPR'), ipPC = val('fIP');
             if (!prPC) { err.textContent = 'El PR es obligatorio (*).'; return; }
-            if (!validarIP(ipPC)) {
-                err.textContent = 'IP inválida. Formato esperado: 192.168.1.100';
-                return;
-            }
-            if (ipYaExiste(ipPC, null)) {
-                err.textContent = 'La IP ' + ipPC + ' ya está en uso en este municipio.';
-                return;
-            }
+            if (!validarIP(ipPC)) { err.textContent = 'IP inválida. Formato esperado: 192.168.1.100'; return; }
+            if (ipYaExiste(ipPC, null)) { err.textContent = 'La IP ' + ipPC + ' ya está en uso en este municipio.'; return; }
             t = tamanosPorTipo('pc');
-            obj = {
-                id: 'pc-' + Date.now(),
-                tipo: 'pc',
-                descripcion: descripcion,
-                nombre: descripcion,
-                pr: prPC,
-                ip: ipPC,
-                sistemas_atiende: val('fSistemas'),
-                prioridad: val('fPrioridad') || 'baja',
-                x: 60 + Math.floor(Math.random() * 150),
-                y: 60 + Math.floor(Math.random() * 100),
-                width: t.w, height: t.h
-            };
+            obj = { id: 'pc-' + Date.now(), tipo: 'pc', descripcion: descripcion, nombre: descripcion, pr: prPC, ip: ipPC, sistemas_atiende: val('fSistemas'), prioridad: val('fPrioridad') || 'baja', x: 60 + Math.floor(Math.random() * 150), y: 60 + Math.floor(Math.random() * 100), width: t.w, height: t.h };
         }
         else {
-            obj = {
-                id: tipo + '-' + Date.now(),
-                tipo: tipo,
-                descripcion: descripcion,
-                nombre: descripcion,
-                x: (tipo === 'unidad') ? 40 : 50,
-                y: 40,
-                width: t.w, height: t.h
-            };
+            obj = { id: tipo + '-' + Date.now(), tipo: tipo, descripcion: descripcion, nombre: descripcion, x: (tipo === 'unidad') ? 40 : 50, y: 40, width: t.w, height: t.h };
         }
-
         pushEnPadre(padre, obj);
         cerrarModal();
         renderizar(); guardar();
@@ -1504,13 +1166,11 @@ function mostrarFormularioConexion(a, b) {
     var nombreA = a.descripcion || a.nombre;
     var nombreB = b.descripcion || b.nombre;
     var hayPC = esPC(a.tipo) || esPC(b.tipo);
-
     if (esPC(a.tipo) && esPC(b.tipo)) {
         abrirModal('🔌 CONEXIÓN INVÁLIDA', '<p style="color:red;">No se puede conectar una PC directamente con otra PC. Una PC se conecta a un switch o modem.</p><button class="btn-del" id="btnCerrarErr" style="margin-top:15px;">Cerrar</button>');
         document.getElementById('btnCerrarErr').addEventListener('click', cerrarModal);
         return;
     }
-
     var pc = null, otro = null;
     if (hayPC) {
         pc = esPC(a.tipo) ? a : b;
@@ -1526,139 +1186,67 @@ function mostrarFormularioConexion(a, b) {
             return;
         }
     }
-
     var html = '<p id="msgErrorCon" style="color:red;font-size:12px;"></p>';
     html += '<p><strong>Desde:</strong> ' + esc(nombreA) + '</p>';
     html += '<p><strong>Hasta:</strong> ' + esc(nombreB) + '</p>';
-
     if (hayPC) {
         html += '<label>Medio</label><select id="fTipoCon" disabled><option value="Ethernet" selected>Ethernet (obligatorio para PC)</option></select>';
         var velBasePC = (otro.tipo === 'switch') ? (otro.velocidad_enlace || '1 Gbps') : '100 Mbps';
         html += '<label>Velocidad</label><select id="fVelCon">' + opcionesVelFiltradas(velBasePC, '100 Mbps') + '</select>';
         html += '<label>Puerto en ' + esc(otro.descripcion || otro.nombre) + ' *</label><input type="number" id="fPuertoEq" min="1">';
     } else {
-        html += '<label>Medio</label><select id="fTipoCon">' +
-            '<option value="FO">Fibra óptica (FO)</option>' +
-            '<option value="Ethernet">Ethernet</option></select>';
+        html += '<label>Medio</label><select id="fTipoCon"><option value="FO">Fibra óptica (FO)</option><option value="Ethernet">Ethernet</option></select>';
         var velMax = '100 Gbps';
         if (a.tipo === 'switch' && a.velocidad_enlace) velMax = a.velocidad_enlace;
-        if (b.tipo === 'switch' && b.velocidad_enlace && VEL_MBPS[b.velocidad_enlace] < VEL_MBPS[velMax]) {
-            velMax = b.velocidad_enlace;
-        }
+        if (b.tipo === 'switch' && b.velocidad_enlace && VEL_MBPS[b.velocidad_enlace] < VEL_MBPS[velMax]) velMax = b.velocidad_enlace;
         html += '<label>Velocidad</label><select id="fVelCon">' + opcionesVelFiltradas(velMax, '1 Gbps') + '</select>';
         if (esEquipo(a.tipo)) html += '<label>Puerto en ' + esc(nombreA) + '</label><input type="number" id="fPuertoA" min="1">';
         if (esEquipo(b.tipo)) html += '<label>Puerto en ' + esc(nombreB) + '</label><input type="number" id="fPuertoB" min="1">';
     }
-
     abrirModal('🔌 NUEVA CONEXIÓN', html);
-
-    var botones = '<div style="margin-top:20px;">' +
-        '<button class="btn-add" id="btnConfirmarCon" style="margin-right:8px;">Crear conexión</button>' +
-        '<button class="btn-del" id="btnCancelarCon">Cancelar</button>' +
-        '</div>';
+    var botones = '<div style="margin-top:20px;"><button class="btn-add" id="btnConfirmarCon" style="margin-right:8px;">Crear conexión</button><button class="btn-del" id="btnCancelarCon">Cancelar</button></div>';
     document.getElementById('modalCuerpo').innerHTML += botones;
-
     document.getElementById('btnCancelarCon').addEventListener('click', cerrarModal);
-
     document.getElementById('btnConfirmarCon').addEventListener('click', function () {
         var err = document.getElementById('msgErrorCon');
         var medio = document.getElementById('fTipoCon').value;
         var vel = document.getElementById('fVelCon').value;
-
         if (hayPC) {
             medio = 'Ethernet';
             var puerto = parseInt(val('fPuertoEq'), 10);
-
-            if (!puerto || !puertoDisponible(otro, medio, puerto)) {
-                err.textContent = 'Puerto inválido en ' + (otro.descripcion || otro.nombre) + '.';
-                return;
-            }
-            if (puertoUsadoEnEquipo(otro.id, puerto, null)) {
-                err.textContent = 'El puerto ' + puerto + ' ya está ocupado por otra conexión en ' + (otro.descripcion || otro.nombre) + '.';
-                return;
-            }
-            if (otro.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[otro.velocidad_enlace || '100 Gbps']) {
-                err.textContent = 'Velocidad ' + vel + ' excede la del switch (' + otro.velocidad_enlace + ').';
-                return;
-            }
-
+            if (!puerto || !puertoDisponible(otro, medio, puerto)) { err.textContent = 'Puerto inválido en ' + (otro.descripcion || otro.nombre) + '.'; return; }
+            if (puertoUsadoEnEquipo(otro.id, puerto, null)) { err.textContent = 'El puerto ' + puerto + ' ya está ocupado por otra conexión en ' + (otro.descripcion || otro.nombre) + '.'; return; }
+            if (otro.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[otro.velocidad_enlace || '100 Gbps']) { err.textContent = 'Velocidad ' + vel + ' excede la del switch (' + otro.velocidad_enlace + ').'; return; }
             var puertoDesde = esEquipo(a.tipo) ? puerto : null;
             var puertoHasta = esEquipo(b.tipo) ? puerto : null;
-
-            datos.conexiones.push({
-                id: 'con-' + Date.now(),
-                desde: a.id,
-                hasta: b.id,
-                tipo: medio,
-                velocidad: vel,
-                puertoDesde: puertoDesde,
-                puertoHasta: puertoHasta
-            });
-
+            datos.conexiones.push({ id: 'con-' + Date.now(), desde: a.id, hasta: b.id, tipo: medio, velocidad: vel, puertoDesde: puertoDesde, puertoHasta: puertoHasta });
             sumarPuertoEnUso(otro, medio, 1);
-            cerrarModal();
-            guardar();
-            renderizar();
+            cerrarModal(); guardar(); renderizar();
             return;
         }
-
         var elA = document.getElementById('fPuertoA');
         var elB = document.getElementById('fPuertoB');
         var pA = elA ? parseInt(elA.value, 10) : null;
         var pB = elB ? parseInt(elB.value, 10) : null;
-
-        if (!puertoDisponible(a, medio, pA)) {
-            err.textContent = 'El puerto ' + pA + ' no existe en ' + nombreA + ' para ' + medio + '.';
-            return;
-        }
-        if (!puertoDisponible(b, medio, pB)) {
-            err.textContent = 'El puerto ' + pB + ' no existe en ' + nombreB + ' para ' + medio + '.';
-            return;
-        }
-        if (puertoUsadoEnEquipo(a.id, pA, null)) {
-            err.textContent = 'El puerto ' + pA + ' ya está ocupado por otra conexión en ' + nombreA + '.';
-            return;
-        }
-        if (puertoUsadoEnEquipo(b.id, pB, null)) {
-            err.textContent = 'El puerto ' + pB + ' ya está ocupado por otra conexión en ' + nombreB + '.';
-            return;
-        }
-        if (a.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[a.velocidad_enlace || '100 Gbps']) {
-            err.textContent = 'Velocidad ' + vel + ' excede la del switch ' + nombreA + ' (' + a.velocidad_enlace + ')';
-            return;
-        }
-        if (b.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[b.velocidad_enlace || '100 Gbps']) {
-            err.textContent = 'Velocidad ' + vel + ' excede la del switch ' + nombreB + ' (' + b.velocidad_enlace + ')';
-            return;
-        }
-
-        datos.conexiones.push({
-            id: 'con-' + Date.now(),
-            desde: a.id,
-            hasta: b.id,
-            tipo: medio,
-            velocidad: vel,
-            puertoDesde: pA,
-            puertoHasta: pB
-        });
-
+        if (!puertoDisponible(a, medio, pA)) { err.textContent = 'El puerto ' + pA + ' no existe en ' + nombreA + ' para ' + medio + '.'; return; }
+        if (!puertoDisponible(b, medio, pB)) { err.textContent = 'El puerto ' + pB + ' no existe en ' + nombreB + ' para ' + medio + '.'; return; }
+        if (puertoUsadoEnEquipo(a.id, pA, null)) { err.textContent = 'El puerto ' + pA + ' ya está ocupado por otra conexión en ' + nombreA + '.'; return; }
+        if (puertoUsadoEnEquipo(b.id, pB, null)) { err.textContent = 'El puerto ' + pB + ' ya está ocupado por otra conexión en ' + nombreB + '.'; return; }
+        if (a.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[a.velocidad_enlace || '100 Gbps']) { err.textContent = 'Velocidad ' + vel + ' excede la del switch ' + nombreA + ' (' + a.velocidad_enlace + ')'; return; }
+        if (b.tipo === 'switch' && VEL_MBPS[vel] > VEL_MBPS[b.velocidad_enlace || '100 Gbps']) { err.textContent = 'Velocidad ' + vel + ' excede la del switch ' + nombreB + ' (' + b.velocidad_enlace + ')'; return; }
+        datos.conexiones.push({ id: 'con-' + Date.now(), desde: a.id, hasta: b.id, tipo: medio, velocidad: vel, puertoDesde: pA, puertoHasta: pB });
         sumarPuertoEnUso(a, medio, 1);
         sumarPuertoEnUso(b, medio, 1);
-
-        cerrarModal();
-        guardar();
-        renderizar();
+        cerrarModal(); guardar(); renderizar();
     });
 }
 
 function mostrarModalEdicion(obj) {
     var nombreActual = obj.descripcion || obj.nombre || '';
     var html = '<p id="msgErrorEdit" style="color:red;font-size:12px;"></p>';
-
     html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin-bottom:10px;">— Datos generales —</h4>';
     html += '<label>Descripción *</label><input type="text" id="eDescripcion" value="' + esc(nombreActual) + '">';
     html += '<label>PR / Código</label><input type="text" id="ePR" value="' + esc(obj.pr || '') + '">';
-
     if (esEquipo(obj.tipo)) {
         html += '<label>Sello</label><input type="text" id="eSello" value="' + esc(obj.sello || '') + '">';
         html += '<label>Marca *</label><input type="text" id="eMarca" value="' + esc(obj.marca || '') + '">';
@@ -1666,21 +1254,16 @@ function mostrarModalEdicion(obj) {
         html += '<label>Fecha instalación</label><input type="text" readonly value="' + (obj.fecha_instalacion ? esc(obj.fecha_instalacion.substring(0, 10)) : '') + '">';
         html += '<label>Ubicación</label><input type="text" readonly value="' + esc(obj.ubicacion || '') + '">';
     }
-
     if (obj.tipo === 'switch') {
         var usados = puertosUsadosReales(obj);
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin:15px 0 10px 0;">— Datos del switch —</h4>';
         html += '<label>IP *</label><input type="text" id="eIP" value="' + esc(obj.ip || '') + '">';
-        html += '<label>Tipo de gestión</label><select id="eTipoGestion">' +
-            ['SSH', 'Telnet', 'Web', 'No gestionable'].map(function (g) {
-                return '<option' + (obj.tipo_gestion === g ? ' selected' : '') + '>' + g + '</option>';
-            }).join('') + '</select>';
+        html += '<label>Tipo de gestión</label><select id="eTipoGestion">' + ['SSH', 'Telnet', 'Web', 'No gestionable'].map(function (g) { return '<option' + (obj.tipo_gestion === g ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select>';
         html += '<label>Velocidad de enlace</label><select id="eVelEnlace">' + opcionesVel(obj.velocidad_enlace) + '</select>';
         html += '<label>Puertos de fibra</label><input type="number" id="ePuertosFibra" value="' + (obj.puertos_fibra || 0) + '">';
         html += '<label>Puertos ethernet</label><input type="number" id="ePuertosEth" value="' + (obj.puertos_ethernet || 0) + '">';
         html += '<p style="font-size:11px;color:#555;">En uso: ' + usados.fibraCount + ' fibra / ' + usados.ethCount + ' ethernet. Puerto más alto usado: fibra ' + usados.fibraMax + ' / ethernet ' + usados.ethMax + '.</p>';
     }
-
     if (obj.tipo === 'modem') {
         var usadosM = puertosUsadosReales(obj);
         html += '<h4 style="border-bottom:2px solid #0f3460;padding-bottom:5px;margin:15px 0 10px 0;">— Datos del modem —</h4>';
@@ -1688,45 +1271,24 @@ function mostrarModalEdicion(obj) {
         html += '<label style="margin-top:8px;"><input type="checkbox" id="eAdsl"' + (obj.usa_adsl ? ' checked' : '') + '> Usa ADSL</label>';
         html += '<p style="font-size:11px;color:#555;">Puerto más alto usado: ethernet ' + usadosM.ethMax + '.</p>';
     }
-
-    if (esPC(obj.tipo) || esServicio(obj.tipo)) {
-        html += '<label>IP *</label><input type="text" id="eIP" value="' + esc(obj.ip || '') + '">';
-    }
-    if (esPC(obj.tipo)) {
-        html += '<label>Sistemas que atiende</label><textarea id="eSistemas" rows="3">' + esc(obj.sistemas_atiende || '') + '</textarea>';
-    }
-
-    if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
-        html += '<label>Prioridad de alertas</label><select id="ePrioridad">' + opcionesPrioridad(obj.prioridad || 'baja') + '</select>';
-    }
+    if (esPC(obj.tipo) || esServicio(obj.tipo)) html += '<label>IP *</label><input type="text" id="eIP" value="' + esc(obj.ip || '') + '">';
+    if (esPC(obj.tipo)) html += '<label>Sistemas que atiende</label><textarea id="eSistemas" rows="3">' + esc(obj.sistemas_atiende || '') + '</textarea>';
+    if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) html += '<label>Prioridad de alertas</label><select id="ePrioridad">' + opcionesPrioridad(obj.prioridad || 'baja') + '</select>';
     if (esEquipo(obj.tipo)) {
-        html += '<label>Modo de monitoreo</label><select id="eMonitoreo">' +
-            '<option value="ping"' + ((obj.monitoreo || 'ping') === 'ping' ? ' selected' : '') + '>Ping / SSH (normal)</option>' +
-            '<option value="inferido"' + (obj.monitoreo === 'inferido' ? ' selected' : '') + '>Inferido (switch cascada / sin gestión)</option>' +
-            '<option value="ninguno"' + (obj.monitoreo === 'ninguno' ? ' selected' : '') + '>No monitorear (almacén / inactivo)</option></select>';
+        html += '<label>Modo de monitoreo</label><select id="eMonitoreo"><option value="ping"' + ((obj.monitoreo || 'ping') === 'ping' ? ' selected' : '') + '>Ping / SSH (normal)</option><option value="inferido"' + (obj.monitoreo === 'inferido' ? ' selected' : '') + '>Inferido (switch cascada / sin gestión)</option><option value="ninguno"' + (obj.monitoreo === 'ninguno' ? ' selected' : '') + '>No monitorear (almacén / inactivo)</option></select>';
     }
-
-    html += '<div style="margin-top:20px;">' +
-        '<button class="btn-add" id="btnActualizar" style="margin-right:8px;">💾 Actualizar</button>' +
-        '<button class="btn-del" id="btnEliminarModal">🗑️ Eliminar</button>' +
-        '</div>';
+    html += '<div style="margin-top:20px;"><button class="btn-add" id="btnActualizar" style="margin-right:8px;">💾 Actualizar</button><button class="btn-del" id="btnEliminarModal">🗑️ Eliminar</button></div>';
     html += '<button class="btn-del" id="btnCerrarModal" style="margin-top:10px;background:#555;">Cerrar sin guardar</button>';
-
     abrirModal('✏️ Editar: ' + esc(nombreActual), html);
-
     document.getElementById('btnCerrarModal').addEventListener('click', cerrarModal);
-
     document.getElementById('btnActualizar').addEventListener('click', function () {
         var err = document.getElementById('msgErrorEdit');
         err.textContent = '';
         var cambios = {};
-
         var nDesc = val('eDescripcion');
         if (!nDesc) { err.textContent = 'La descripción es obligatoria.'; return; }
         if (nDesc !== nombreActual) cambios.descripcion = nDesc;
-
         if (val('ePR') !== (obj.pr || '')) cambios.pr = val('ePR');
-
         if (esEquipo(obj.tipo)) {
             if (val('eSello') !== (obj.sello || '')) cambios.sello = val('eSello');
             var nMarca = val('eMarca'), nModelo = val('eModelo');
@@ -1734,7 +1296,6 @@ function mostrarModalEdicion(obj) {
             if (nMarca !== (obj.marca || '')) cambios.marca = nMarca;
             if (nModelo !== (obj.modelo || '')) cambios.modelo = nModelo;
         }
-
         var eIP = document.getElementById('eIP');
         if (eIP) {
             var nIP = eIP.value.trim();
@@ -1747,12 +1308,10 @@ function mostrarModalEdicion(obj) {
                 cambios.ip = nIP;
             }
         }
-
         if (obj.tipo === 'switch') {
             var usados2 = puertosUsadosReales(obj);
             var nFibra = parseInt(val('ePuertosFibra'), 10) || 0;
             var nEth = parseInt(val('ePuertosEth'), 10) || 0;
-
             if (nFibra !== (obj.puertos_fibra || 0)) {
                 if (nFibra < usados2.fibraMax) { err.textContent = 'No puede reducir los puertos de fibra a ' + nFibra + ': hay una conexión usando el puerto ' + usados2.fibraMax + '.'; return; }
                 if (nFibra < (obj.puertos_fibra_en_uso || 0)) { err.textContent = 'Hay ' + (obj.puertos_fibra_en_uso || 0) + ' puertos de fibra en uso.'; return; }
@@ -1763,228 +1322,300 @@ function mostrarModalEdicion(obj) {
                 if (nEth < (obj.puertos_ethernet_en_uso || 0)) { err.textContent = 'Hay ' + (obj.puertos_ethernet_en_uso || 0) + ' puertos ethernet en uso.'; return; }
                 cambios.puertos_ethernet = nEth;
             }
-
-            if (val('eTipoGestion') !== (obj.tipo_gestion || '')) {
-                cambios.tipo_gestion = val('eTipoGestion');
-                cambios.gestionable = (val('eTipoGestion') !== 'No gestionable');
-            }
-
+            if (val('eTipoGestion') !== (obj.tipo_gestion || '')) { cambios.tipo_gestion = val('eTipoGestion'); cambios.gestionable = (val('eTipoGestion') !== 'No gestionable'); }
             var nVel = val('eVelEnlace');
             if (nVel !== (obj.velocidad_enlace || '')) {
                 if (VEL_MBPS[nVel] < maxVelocidadConexiones(obj)) { err.textContent = 'No puede bajar la velocidad a ' + nVel + ': hay conexiones funcionando por encima de esa velocidad.'; return; }
                 cambios.velocidad_enlace = nVel;
             }
         }
-
         if (obj.tipo === 'modem') {
             var usados3 = puertosUsadosReales(obj);
             var nEthM = parseInt(val('ePuertosEthModem'), 10) || 0;
-            if (nEthM !== (obj.puerto_ethernet || 0)) {
-                if (nEthM < usados3.ethMax) { err.textContent = 'No puede reducir los puertos a ' + nEthM + ': hay una conexión usando el puerto ' + usados3.ethMax + '.'; return; }
-                cambios.puerto_ethernet = nEthM;
-            }
+            if (nEthM < usados3.ethMax) { err.textContent = 'No puede reducir los puertos a ' + nEthM + ': hay una conexión usando el puerto ' + usados3.ethMax + '.'; return; }
+            if (nEthM !== (obj.puerto_ethernet || 0)) cambios.puerto_ethernet = nEthM;
             var nAdsl = document.getElementById('eAdsl').checked;
             if (nAdsl !== !!obj.usa_adsl) cambios.usa_adsl = nAdsl;
         }
-
-        if (esPC(obj.tipo)) {
-            if (val('eSistemas') !== (obj.sistemas_atiende || '')) cambios.sistemas_atiende = val('eSistemas');
-        }
-
+        if (esPC(obj.tipo)) { if (val('eSistemas') !== (obj.sistemas_atiende || '')) cambios.sistemas_atiende = val('eSistemas'); }
         var ePrio = document.getElementById('ePrioridad');
-        if (ePrio && val('ePrioridad') !== (obj.prioridad || 'baja')) {
-            cambios.prioridad = val('ePrioridad');
-        }
+        if (ePrio && val('ePrioridad') !== (obj.prioridad || 'baja')) cambios.prioridad = val('ePrioridad');
         var eMon = document.getElementById('eMonitoreo');
-        if (eMon && val('eMonitoreo') !== (obj.monitoreo || 'ping')) {
-            cambios.monitoreo = val('eMonitoreo');
-        }
-
+        if (eMon && val('eMonitoreo') !== (obj.monitoreo || 'ping')) cambios.monitoreo = val('eMonitoreo');
         var hayCambios = false;
         for (var k in cambios) { hayCambios = true; break; }
         if (!hayCambios) { err.textContent = 'No hay cambios que actualizar.'; return; }
-
         if (!confirm('¿Desea actualizar los datos de "' + nombreActual + '"?')) return;
-
         for (var kk in cambios) obj[kk] = cambios[kk];
         if (cambios.descripcion) obj.nombre = cambios.descripcion;
-
-        cerrarModal();
-        guardar();
-        renderizar();
-        seleccionar(obj);
+        cerrarModal(); guardar(); renderizar(); seleccionar(obj);
     });
-
     var btnDel = document.getElementById('btnEliminarModal');
     var confirmando = false;
     btnDel.addEventListener('click', function () {
-        if (!confirmando) {
-            confirmando = true;
-            this.textContent = '¿Confirmar eliminación?';
-            this.style.background = 'red';
-            return;
-        }
-        for (var k2 = 0; k2 < datos.conexiones.length; k2++) {
-            var cn2 = datos.conexiones[k2];
-            if (cn2.desde === obj.id || cn2.hasta === obj.id) {
-                var otroId = cn2.desde === obj.id ? cn2.hasta : cn2.desde;
-                sumarPuertoEnUso(buscarObjPorId(otroId), cn2.tipo, -1);
-            }
-        }
-        eliminarPorId(obj.id);
-        datos.conexiones = datos.conexiones.filter(function (c) {
-            return c.desde !== obj.id && c.hasta !== obj.id;
-        });
-        seleccion = null;
-        cerrarModal();
-        guardar();
-        renderizar();
-        panelVacio();
+        if (!confirmando) { confirmando = true; this.textContent = '¿Confirmar eliminación?'; this.style.background = 'red'; return; }
+        eliminarObjeto(obj);
     });
+}
+
+function eliminarObjeto(obj) {
+    for (var k2 = 0; k2 < datos.conexiones.length; k2++) {
+        var cn2 = datos.conexiones[k2];
+        if (cn2.desde === obj.id || cn2.hasta === obj.id) {
+            var otroId = cn2.desde === obj.id ? cn2.hasta : cn2.desde;
+            sumarPuertoEnUso(buscarObjPorId(otroId), cn2.tipo, -1);
+        }
+    }
+    eliminarPorId(obj.id);
+    datos.conexiones = datos.conexiones.filter(function (c) { return c.desde !== obj.id && c.hasta !== obj.id; });
+    seleccion = null;
+    cerrarModal(); guardar(); renderizar(); panelVacio();
 }
 
 function mostrarPanelConexion(con) {
     var a = buscarObjPorId(con.desde);
     var b = buscarObjPorId(con.hasta);
     var hayPC = (a && esPC(a.tipo)) || (b && esPC(b.tipo));
-
     var html = '<p><strong>Desde:</strong> ' + esc(a ? (a.descripcion || a.nombre) : '?') + '</p>';
     html += '<p><strong>Hasta:</strong> ' + esc(b ? (b.descripcion || b.nombre) : '?') + '</p>';
-
-    if (hayPC) {
-        html += '<label>Medio</label><select id="cTipo" disabled><option value="Ethernet" selected>Ethernet (PC)</option></select>';
-    } else {
-        html += '<label>Medio</label><select id="cTipo">' +
-            '<option value="FO"' + (con.tipo === 'FO' ? ' selected' : '') + '>Fibra óptica (FO)</option>' +
-            '<option value="Ethernet"' + (con.tipo === 'Ethernet' ? ' selected' : '') + '>Ethernet</option></select>';
-    }
-
+    if (hayPC) html += '<label>Medio</label><select id="cTipo" disabled><option value="Ethernet" selected>Ethernet (PC)</option></select>';
+    else html += '<label>Medio</label><select id="cTipo"><option value="FO"' + (con.tipo === 'FO' ? ' selected' : '') + '>Fibra óptica (FO)</option><option value="Ethernet"' + (con.tipo === 'Ethernet' ? ' selected' : '') + '>Ethernet</option></select>';
     var velMax = '100 Gbps';
     if (a && a.tipo === 'switch' && a.velocidad_enlace) velMax = a.velocidad_enlace;
-    if (b && b.tipo === 'switch' && b.velocidad_enlace && VEL_MBPS[b.velocidad_enlace] < VEL_MBPS[velMax]) {
-        velMax = b.velocidad_enlace;
-    }
+    if (b && b.tipo === 'switch' && b.velocidad_enlace && VEL_MBPS[b.velocidad_enlace] < VEL_MBPS[velMax]) velMax = b.velocidad_enlace;
     if (hayPC) velMax = (a && a.tipo === 'switch') ? (a.velocidad_enlace || '1 Gbps') : ((b && b.tipo === 'switch') ? (b.velocidad_enlace || '1 Gbps') : '100 Mbps');
     html += '<label>Velocidad</label><select id="cVel">' + opcionesVelFiltradas(velMax, con.velocidad) + '</select>';
-
     if (a && esEquipo(a.tipo)) html += '<label>Puerto en ' + esc(a.descripcion || a.nombre) + '</label><input type="number" id="cPuertoA" value="' + (con.puertoDesde == null ? '' : con.puertoDesde) + '">';
     if (b && esEquipo(b.tipo)) html += '<label>Puerto en ' + esc(b.descripcion || b.nombre) + '</label><input type="number" id="cPuertoB" value="' + (con.puertoHasta == null ? '' : con.puertoHasta) + '">';
-
-    document.getElementById('panel-contenido').innerHTML = html +
-        '<button class="btn-del" id="btnEliminarCon" style="margin-top:15px;">Eliminar conexión</button>';
-
+    html += '<p style="font-size:11px;color:#555;margin-top:8px;">Curvas: arrastra los puntos tenues del medio de la línea. Clic derecho sobre un punto sólido lo elimina.</p>';
+    document.getElementById('panel-contenido').innerHTML = html + '<button class="btn-del" id="btnEliminarCon" style="margin-top:15px;">Eliminar conexión</button>';
     var cTipo = document.getElementById('cTipo');
-    if (cTipo && !cTipo.disabled) {
-        cTipo.addEventListener('change', function () {
-            con.tipo = this.value; guardar(); dibujarConexiones();
-        });
-    }
-    document.getElementById('cVel').addEventListener('change', function () {
-        con.velocidad = this.value; guardar(); dibujarConexiones();
-    });
+    if (cTipo && !cTipo.disabled) cTipo.addEventListener('change', function () { con.tipo = this.value; guardar(); dibujarConexiones(); });
+    document.getElementById('cVel').addEventListener('change', function () { con.velocidad = this.value; guardar(); dibujarConexiones(); });
     var cA = document.getElementById('cPuertoA');
     if (cA) cA.addEventListener('change', function () {
         var v = this.value === '' ? null : parseInt(this.value, 10);
-        if (v != null && (puertoUsadoEnEquipo(a.id, v, con.id) || !puertoDisponible(a, con.tipo, v))) {
-            this.value = con.puertoDesde == null ? '' : con.puertoDesde;
-            return;
-        }
-        con.puertoDesde = v;
-        guardar(); dibujarConexiones();
+        if (v != null && (puertoUsadoEnEquipo(a.id, v, con.id) || !puertoDisponible(a, con.tipo, v))) { this.value = con.puertoDesde == null ? '' : con.puertoDesde; return; }
+        con.puertoDesde = v; guardar(); dibujarConexiones();
     });
     var cB = document.getElementById('cPuertoB');
     if (cB) cB.addEventListener('change', function () {
         var v = this.value === '' ? null : parseInt(this.value, 10);
-        if (v != null && (puertoUsadoEnEquipo(b.id, v, con.id) || !puertoDisponible(b, con.tipo, v))) {
-            this.value = con.puertoHasta == null ? '' : con.puertoHasta;
-            return;
-        }
-        con.puertoHasta = v;
-        guardar(); dibujarConexiones();
+        if (v != null && (puertoUsadoEnEquipo(b.id, v, con.id) || !puertoDisponible(b, con.tipo, v))) { this.value = con.puertoHasta == null ? '' : con.puertoHasta; return; }
+        con.puertoHasta = v; guardar(); dibujarConexiones();
     });
-
     var btnDel = document.getElementById('btnEliminarCon');
     var confirmando = false;
     btnDel.addEventListener('click', function () {
-        if (!confirmando) {
-            confirmando = true;
-            this.textContent = '¿Confirmar eliminación?';
-            this.style.background = 'red';
-        } else {
-            sumarPuertoEnUso(a, con.tipo, -1);
-            sumarPuertoEnUso(b, con.tipo, -1);
-            for (var i = 0; i < datos.conexiones.length; i++) {
-                if (datos.conexiones[i].id === con.id) {
-                    datos.conexiones.splice(i, 1);
-                    break;
-                }
-            }
-            conexionSeleccionada = null;
-            guardar();
-            renderizar();
-            panelVacio();
-        }
+        if (!confirmando) { confirmando = true; this.textContent = '¿Confirmar eliminación?'; this.style.background = 'red'; }
+        else eliminarConexion(con);
     });
-
     if (!puedeEditar()) {
         var soloCon = document.querySelectorAll('#panel-contenido input, #panel-contenido select, #panel-contenido button');
         for (var s2 = 0; s2 < soloCon.length; s2++) soloCon[s2].disabled = true;
     }
 }
 
+function eliminarConexion(con) {
+    var a = buscarObjPorId(con.desde), b = buscarObjPorId(con.hasta);
+    sumarPuertoEnUso(a, con.tipo, -1);
+    sumarPuertoEnUso(b, con.tipo, -1);
+    for (var i = 0; i < datos.conexiones.length; i++) if (datos.conexiones[i].id === con.id) { datos.conexiones.splice(i, 1); break; }
+    conexionSeleccionada = null;
+    guardar(); renderizar(); panelVacio();
+}
+
 function actualizarMigas() {
     var cont = document.getElementById('migas');
     var html = '<span class="miga" data-idx="-1">🗺️ ' + esc(datos.nombre) + '</span>';
-    for (var i = 0; i < ruta.length; i++) {
-        html += '<span class="sep">›</span><span class="miga" data-idx="' + i + '">' + (ICONOS[ruta[i].tipo] || '') + ' ' + esc(ruta[i].descripcion || ruta[i].nombre) + '</span>';
-    }
+    for (var i = 0; i < ruta.length; i++) html += '<span class="sep">›</span><span class="miga" data-idx="' + i + '">' + (ICONOS[ruta[i].tipo] || '') + ' ' + esc(ruta[i].descripcion || ruta[i].nombre) + '</span>';
     cont.innerHTML = html;
-
     var migas = cont.querySelectorAll('.miga');
     for (var j = 0; j < migas.length - 1; j++) {
         migas[j].addEventListener('click', function () {
             var idx = parseInt(this.getAttribute('data-idx'), 10);
             ruta = ruta.slice(0, idx + 1);
             seleccion = null;
-            renderizar();
-            panelVacio();
+            renderizar(); panelVacio();
         });
     }
+}
+
+function padreParaCrear(tipo) {
+    if (tipo === 'unidad') return null;
+    if (tipo === 'edificio') return ruta[0] || null;
+    if (tipo === 'local') return ruta.length >= 2 ? ruta[ruta.length - 1] : null;
+    return ruta.length >= 3 ? ruta[ruta.length - 1] : null;
 }
 
 function actualizarBarraAgregar() {
     var barra = document.getElementById('barra-agregar');
-    if (!puedeEditar()) {
-        barra.innerHTML = '<p style="color:#555;font-size:12px;padding:10px;">👁️ Modo lectura: tu rol solo puede consultar.</p>';
-        return;
-    }
-
+    if (!puedeEditar()) { barra.innerHTML = '<p style="color:#9fb3c8;font-size:12px;padding:10px;">👁️ Modo lectura: tu rol solo puede consultar.</p>'; return; }
     var html = '';
     if (ruta.length === 0) html = '<button class="btn-add" data-crear="unidad">+ Unidad</button>';
     if (ruta.length === 1) html = '<button class="btn-add" data-crear="edificio">+ Edificio</button>';
     if (ruta.length === 2) html = '<button class="btn-add" data-crear="local">+ Local</button>';
-    if (ruta.length >= 3) {
-        html = '<button class="btn-add" data-crear="local">+ Sub-local</button>' +
-            '<button class="btn-add" data-crear="equipo">+ Equipo de red</button>' +
-            '<button class="btn-add" data-crear="servicio">+ Servicio</button>' +
-            '<button class="btn-add" data-crear="pc">+ PC</button>';
-    }
+    if (ruta.length >= 3) html = '<button class="btn-add" data-crear="local">+ Sub-local</button><button class="btn-add" data-crear="equipo">+ Equipo de red</button><button class="btn-add" data-crear="servicio">+ Servicio</button><button class="btn-add" data-crear="pc">+ PC</button>';
     barra.innerHTML = html;
-
     var btns = barra.querySelectorAll('button');
     for (var i = 0; i < btns.length; i++) {
         btns[i].addEventListener('click', function () {
             var tipo = this.getAttribute('data-crear');
-            var padre = null;
-            if (tipo === 'edificio') padre = ruta[0];
-            if (tipo === 'local') padre = ruta.length >= 2 ? ruta[ruta.length - 1] : null;
-            if (tipo === 'equipo' || tipo === 'servicio' || tipo === 'pc') padre = ruta.length >= 3 ? ruta[ruta.length - 1] : null;
-            mostrarFormulario(tipo, padre);
+            mostrarFormulario(tipo, padreParaCrear(tipo));
         });
     }
 }
 
+/* ---------- listado lateral del nivel actual ---------- */
+function renderListado() {
+    var rail = document.getElementById('railLista');
+    var titulo = document.getElementById('railTitulo');
+    var resumen = document.getElementById('railResumen');
+    if (!rail || !datos) return;
+    var nivelNombre = ruta.length ? (ruta[ruta.length - 1].descripcion || ruta[ruta.length - 1].nombre) : datos.nombre;
+    titulo.textContent = nivelNombre;
+    var lista = listaActual();
+    var q = (document.getElementById('railBuscar') || {}).value || '';
+    q = q.trim().toLowerCase();
+    var filtrada = lista.filter(function (o) {
+        if (!q) return true;
+        return ((o.descripcion || o.nombre || '') + ' ' + (o.ip || '') + ' ' + (o.pr || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    var c = { switch: 0, modem: 0, transceiver: 0, pc: 0, servicio: 0, cont: 0 };
+    lista.forEach(function (o) {
+        if (esContenedor(o.tipo)) c.cont++;
+        else if (esEquipo(o.tipo)) c[o.tipo]++;
+        else if (esPC(o.tipo)) c.pc++;
+        else c.servicio++;
+    });
+    resumen.innerHTML = '<span>' + lista.length + ' elementos</span><span>' + c.cont + ' cont.</span><span>' + (c.switch + c.modem + c.transceiver) + ' red</span><span>' + c.pc + ' PC</span>';
+    var h = '';
+    if (!filtrada.length) h = '<p class="rail-vacio">Sin elementos en este nivel.</p>';
+    filtrada.forEach(function (o) {
+        var st = esContenedor(o.tipo) ? null : estadoDe(o.id);
+        var dot = esContenedor(o.tipo) ? '#22d3ee' : colorEstado(o.id);
+        var meta = esContenedor(o.tipo) ? (hijosDe(o).length + ' hijos') : (o.ip || '');
+        h += '<div class="rail-item' + (seleccion && seleccion.id === o.id ? ' activo' : '') + '" data-id="' + esc(o.id) + '">' +
+            '<i class="rail-dot" style="background:' + dot + '"></i>' +
+            '<span class="rail-txt"><b>' + (ICONOS[o.tipo] || '') + ' ' + esc(o.descripcion || o.nombre) + '</b><span>' + esc(meta) + '</span></span>' +
+            (esContenedor(o.tipo) ? '<button class="rail-entrar" data-entrar="' + esc(o.id) + '" title="Entrar">↘</button>' : '') +
+            '</div>';
+    });
+    rail.innerHTML = h;
+    rail.querySelectorAll('.rail-item').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            if (e.target.classList.contains('rail-entrar')) return;
+            var o = buscarObjPorId(this.getAttribute('data-id'));
+            if (o) { seleccionar(o); var dom = document.querySelector('.elemento[data-id="' + o.id + '"]'); if (dom) dom.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' }); }
+        });
+    });
+    rail.querySelectorAll('.rail-entrar').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var o = buscarObjPorId(this.getAttribute('data-entrar'));
+            if (o && esContenedor(o.tipo)) { ruta.push(o); seleccion = null; renderizar(); panelVacio(); }
+        });
+    });
+}
+
+/* ---------- menú contextual ---------- */
+function cerrarCtx() { var el = document.getElementById('ctxMenu'); if (el) el.hidden = true; }
+function abrirCtx(e, items, tit) {
+    var el = document.getElementById('ctxMenu');
+    var h = tit ? '<div class="ctx-title">' + esc(tit) + '</div>' : '';
+    items.forEach(function (it) {
+        if (it === '-') { h += '<div class="ctx-sep"></div>'; return; }
+        h += '<button type="button" class="ctx-item ' + (it.cls || '') + '"' + (it.dis ? ' disabled' : '') + ' data-k="' + esc(it.k) + '"><span class="ci">' + it.i + '</span><span>' + esc(it.t) + '</span></button>';
+    });
+    el.innerHTML = h; el.hidden = false;
+    var r = el.getBoundingClientRect();
+    el.style.left = Math.min(e.clientX, window.innerWidth - r.width - 10) + 'px';
+    el.style.top = Math.min(e.clientY, window.innerHeight - r.height - 10) + 'px';
+    el.querySelectorAll('.ctx-item').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var k = this.getAttribute('data-k'); cerrarCtx();
+            var it = items.filter(function (z) { return z !== '-' && z.k === k; })[0];
+            if (it && it.fn) it.fn();
+        });
+    });
+}
+function ctxElemento(e, obj) {
+    var it = [];
+    if (esContenedor(obj.tipo)) {
+        it.push({ k: 'enter', i: '↘', t: 'Entrar en ' + (obj.descripcion || obj.nombre), fn: function () { ruta.push(obj); seleccion = null; renderizar(); panelVacio(); } });
+    }
+    if (puedeEditar()) {
+        it.push({ k: 'edit', i: '✏️', t: 'Editar datos', fn: function () { seleccionar(obj); mostrarModalEdicion(obj); } });
+        it.push({ k: 'con', i: '🔌', t: 'Conectar desde aquí', fn: function () { if (!modoConexion) toggleModoConexion(); manejarClickConexion(obj); } });
+        if (esContenedor(obj.tipo)) {
+            it.push('-');
+            if (obj.tipo === 'unidad') it.push({ k: 'c1', i: '🏬', t: 'Crear edificio dentro', fn: function () { ruta.push(obj); renderizar(); mostrarFormulario('edificio', obj); } });
+            if (obj.tipo === 'edificio') it.push({ k: 'c2', i: '🚪', t: 'Crear local dentro', fn: function () { ruta.push(obj); renderizar(); mostrarFormulario('local', obj); } });
+            if (obj.tipo === 'local') {
+                it.push({ k: 'c3', i: '🚪', t: 'Crear sub-local', fn: function () { ruta.push(obj); renderizar(); mostrarFormulario('local', obj); } });
+                it.push({ k: 'c4', i: '🔀', t: 'Crear equipo de red', fn: function () { ruta.push(obj); renderizar(); mostrarFormulario('equipo', obj); } });
+                it.push({ k: 'c5', i: '💻', t: 'Crear servicio', fn: function () { ruta.push(obj); renderizar(); mostrarFormulario('servicio', obj); } });
+                it.push({ k: 'c6', i: '🖥️', t: 'Crear PC', fn: function () { ruta.push(obj); renderizar(); mostrarFormulario('pc', obj); } });
+            }
+            it.push('-');
+            it.push({ k: 'exp', i: '📥', t: 'Exportar inventario', fn: function () { seleccion = obj; desgloseActual = recogerEquiposDe(obj, rutaBaseDe()); abrirModalExportar(); } });
+        }
+        it.push('-');
+        it.push({ k: 'del', i: '🗑', t: 'Eliminar', cls: 'del', fn: function () { seleccionar(obj); mostrarModalEdicion(obj); setTimeout(function () { var b = document.getElementById('btnEliminarModal'); if (b) b.click(); }, 50); } });
+    } else {
+        it.push({ k: 'view', i: '👁️', t: 'Ver propiedades', fn: function () { seleccionar(obj); } });
+    }
+    abrirCtx(e, it, (ICONOS[obj.tipo] || '') + ' ' + (obj.descripcion || obj.nombre));
+}
+function ctxLienzo(e) {
+    var it = [];
+    if (puedeEditar()) {
+        if (ruta.length === 0) it.push({ k: 'u', i: '🏢', t: 'Crear unidad', fn: function () { mostrarFormulario('unidad', null); } });
+        if (ruta.length === 1) it.push({ k: 'e', i: '🏬', t: 'Crear edificio', fn: function () { mostrarFormulario('edificio', padreParaCrear('edificio')); } });
+        if (ruta.length === 2) it.push({ k: 'l', i: '🚪', t: 'Crear local', fn: function () { mostrarFormulario('local', padreParaCrear('local')); } });
+        if (ruta.length >= 3) {
+            it.push({ k: 'sl', i: '🚪', t: 'Crear sub-local', fn: function () { mostrarFormulario('local', padreParaCrear('local')); } });
+            it.push({ k: 'eq', i: '🔀', t: 'Crear equipo de red', fn: function () { mostrarFormulario('equipo', padreParaCrear('equipo')); } });
+            it.push({ k: 'sv', i: '💻', t: 'Crear servicio', fn: function () { mostrarFormulario('servicio', padreParaCrear('servicio')); } });
+            it.push({ k: 'pc', i: '🖥️', t: 'Crear PC', fn: function () { mostrarFormulario('pc', padreParaCrear('pc')); } });
+        }
+        it.push('-');
+        it.push({ k: 'con', i: '🔌', t: modoConexion ? 'Salir de modo conexión' : 'Modo conexión', fn: toggleModoConexion });
+    }
+    if (ruta.length) it.push({ k: 'up', i: '⬆', t: 'Subir un nivel', fn: function () { ruta.pop(); seleccion = null; renderizar(); panelVacio(); } });
+    abrirCtx(e, it, ruta.length ? (ruta[ruta.length - 1].descripcion || ruta[ruta.length - 1].nombre) : datos.nombre);
+}
+function ctxConexion(e, con) {
+    var it = [{ k: 'prop', i: 'ℹ️', t: 'Propiedades', fn: function () { conexionSeleccionada = con.id; dibujarConexiones(); mostrarPanelConexion(con); } }];
+    if (puedeEditar()) {
+        it.push({ k: 'pt', i: '➕', t: 'Añadir punto de curva aquí', fn: function () {
+            if (!con.puntosControl) con.puntosControl = [];
+            var svg = document.getElementById('capa-conexiones');
+            var rect = svg.getBoundingClientRect();
+            var x = e.clientX - rect.left, y = e.clientY - rect.top;
+            con.puntosControl.push([x, y]);
+            conexionSeleccionada = con.id;
+            guardar(); dibujarConexiones();
+        } });
+        it.push({ k: 'straight', i: '〰️', t: 'Enderezar', dis: !(con.puntosControl && con.puntosControl.length), fn: function () { delete con.puntosControl; guardar(); dibujarConexiones(); } });
+        it.push('-');
+        it.push({ k: 'del', i: '🗑', t: 'Eliminar conexión', cls: 'del', fn: function () { eliminarConexion(con); } });
+    }
+    abrirCtx(e, it, 'Enlace ' + con.tipo);
+}
+
 document.addEventListener('mousemove', function (e) {
+    if (arrastreCurva) {
+        var svg = document.getElementById('capa-conexiones');
+        if (!svg) return;
+        var rect = svg.getBoundingClientRect();
+        var x = e.clientX - rect.left, y = e.clientY - rect.top;
+        var con = arrastreCurva.con;
+        if (!con.puntosControl) con.puntosControl = [];
+        con.puntosControl[arrastreCurva.idx] = [x, y];
+        dibujarConexiones();
+        return;
+    }
     if (arrastre) {
         var dx = e.clientX - arrastre.startX;
         var dy = e.clientY - arrastre.startY;
@@ -2007,19 +1638,13 @@ document.addEventListener('mousemove', function (e) {
 });
 
 document.addEventListener('mouseup', function () {
-    if (redimension) {
-        redimension = null;
-        guardar();
-        return;
-    }
+    if (arrastreCurva) { arrastreCurva = null; guardar(); dibujarConexiones(); return; }
+    if (redimension) { redimension = null; guardar(); return; }
     if (arrastre) {
         var a = arrastre;
         arrastre = null;
-        if (a.moved) {
-            guardar();
-        } else if (puedeEditar() && (esEquipo(a.obj.tipo) || esServicio(a.obj.tipo) || esPC(a.obj.tipo))) {
-            mostrarModalEdicion(a.obj);
-        }
+        if (a.moved) guardar();
+        else if (puedeEditar() && (esEquipo(a.obj.tipo) || esServicio(a.obj.tipo) || esPC(a.obj.tipo))) mostrarModalEdicion(a.obj);
     }
 });
 
@@ -2028,88 +1653,63 @@ function seleccionar(obj) {
     esperandoConfirmarEliminar = false;
     marcarSeleccion();
     mostrarPanel(obj);
+    renderListado();
 }
-
 function panelVacio() {
-    document.getElementById('panel-contenido').innerHTML =
-        '<p class="aviso">Seleccione un elemento del lienzo</p>';
+    document.getElementById('panel-contenido').innerHTML = '<p class="aviso">Seleccione un elemento del lienzo</p>';
 }
 
 function mostrarPanel(obj) {
     var html = '<h3>' + (ICONOS[obj.tipo] || '') + ' ' + esc(obj.tipo.toUpperCase()) + '</h3>';
-
     if (esContenedor(obj.tipo)) {
         html += campo('Nombre', 'nombre', obj.nombre || obj.descripcion);
-        html += '<p style="margin-top:10px;color:#555;font-size:12px;">Doble clic en el elemento para ver su contenido.</p>';
-
+        html += '<p style="margin-top:10px;color:#9fb3c8;font-size:12px;">Doble clic en el elemento para ver su contenido.</p>';
         desgloseActual = recogerEquiposDe(obj, rutaBaseDe());
         var resumen = {};
-        for (var d = 0; d < desgloseActual.length; d++) {
-            resumen[desgloseActual[d].tipo] = (resumen[desgloseActual[d].tipo] || 0) + 1;
-        }
+        for (var d = 0; d < desgloseActual.length; d++) resumen[desgloseActual[d].tipo] = (resumen[desgloseActual[d].tipo] || 0) + 1;
         var resumenTxt = [];
         for (var rt in resumen) resumenTxt.push(resumen[rt] + ' ' + rt);
-
         html += '<p style="margin-top:8px;"><strong>' + esc(obj.tipo.toUpperCase()) + ': ' + esc(obj.descripcion || obj.nombre) + '</strong></p>';
         html += '<p><strong>Total equipos: ' + desgloseActual.length + '</strong>' + (resumenTxt.length ? ' (' + resumenTxt.join(' · ') + ')' : '') + '</p>';
-
         if (desgloseActual.length) {
-            html += '<div style="margin:10px 0;">' +
-                '<button class="btn-add" id="btnExportarDatos" style="padding:6px 12px;font-size:13px;">📥 Exportar datos</button>' +
-                '</div>';
-            html += '<div style="max-height:280px;overflow:auto;border:1px solid #ddd;border-radius:4px;">';
+            html += '<div style="margin:10px 0;"><button class="btn-add" id="btnExportarDatos" style="padding:6px 12px;font-size:13px;">📥 Exportar datos</button></div>';
+            html += '<div style="max-height:280px;overflow:auto;border:1px solid #22375a;border-radius:4px;">';
             html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
             html += '<tr style="background:#0f3460;color:#fff;"><th style="padding:4px;"></th><th style="padding:4px;text-align:left;">Descripción</th><th style="padding:4px;text-align:left;">PR</th></tr>';
             for (var fi = 0; fi < desgloseActual.length; fi++) {
                 var fe = desgloseActual[fi];
-                html += '<tr class="fila-equipo" data-idx="' + fi + '" style="cursor:pointer;border-bottom:1px solid #eee;">' +
+                html += '<tr class="fila-equipo" data-idx="' + fi + '" style="cursor:pointer;border-bottom:1px solid #1a2b47;">' +
                     '<td style="padding:4px;">' + (ICONOS[fe.tipo] || '') + '</td>' +
                     '<td style="padding:4px;">' + esc(fe.descripcion) + '</td>' +
                     '<td style="padding:4px;">' + esc(fe.pr) + '</td></tr>';
             }
             html += '</table></div>';
-            html += '<p style="font-size:11px;color:#555;margin-top:6px;">Haz clic en un equipo para ver sus detalles (solo lectura).</p>';
+            html += '<p style="font-size:11px;color:#9fb3c8;margin-top:6px;">Haz clic en un equipo para ver sus detalles (solo lectura).</p>';
         }
-
-        if (puedeEditar()) {
-            html += '<button class="btn-del" id="btnEliminar">Eliminar</button>';
-        }
+        if (puedeEditar()) html += '<button class="btn-del" id="btnEliminar">Eliminar</button>';
     }
     else if (esEquipo(obj.tipo) || esServicio(obj.tipo) || esPC(obj.tipo)) {
         html += '<p style="margin-top:8px;"><strong>' + esc(obj.descripcion || obj.nombre) + '</strong></p>';
         if (obj.ip) html += '<p>IP: ' + esc(obj.ip) + '</p>';
         if (obj.pr) html += '<p>PR: ' + esc(obj.pr) + '</p>';
         if (obj.tipo === 'switch') {
-            html += '<p>Puertos fibra: ' + (obj.puertos_fibra_en_uso || 0) + '/' + (obj.puertos_fibra || 0) +
-                ' — ethernet: ' + (obj.puertos_ethernet_en_uso || 0) + '/' + (obj.puertos_ethernet || 0) + '</p>';
-
+            html += '<p>Puertos fibra: ' + (obj.puertos_fibra_en_uso || 0) + '/' + (obj.puertos_fibra || 0) + ' — ethernet: ' + (obj.puertos_ethernet_en_uso || 0) + '/' + (obj.puertos_ethernet || 0) + '</p>';
             var tieneGestion = puedeEditar() && obj.ip && obj.tipo_gestion && obj.tipo_gestion !== 'No gestionable';
             if (tieneGestion) {
                 var nombreSwitch = obj.descripcion || obj.nombre || '';
                 html += '<div style="margin-top:10px;">';
-                if (obj.tipo_gestion === 'SSH') {
-                    html += '<button class="btn-add" id="btnAbrirSSH" style="background:#2c3e50;margin-right:8px;">🔐 Abrir SSH</button>';
-                } else if (obj.tipo_gestion === 'Web') {
-                    html += '<button class="btn-add" id="btnAbrirWeb" style="background:#27ae60;margin-right:8px;">🌐 Abrir Admin Web</button>';
-                } else if (obj.tipo_gestion === 'Telnet') {
-                    html += '<button class="btn-add" id="btnAbrirTelnet" style="background:#8e44ad;margin-right:8px;">📟 Abrir Telnet</button>';
-                }
+                if (obj.tipo_gestion === 'SSH') html += '<button class="btn-add" id="btnAbrirSSH" style="background:#2c3e50;margin-right:8px;">🔐 Abrir SSH</button>';
+                else if (obj.tipo_gestion === 'Web') html += '<button class="btn-add" id="btnAbrirWeb" style="background:#27ae60;margin-right:8px;">🌐 Abrir Admin Web</button>';
+                else if (obj.tipo_gestion === 'Telnet') html += '<button class="btn-add" id="btnAbrirTelnet" style="background:#8e44ad;margin-right:8px;">📟 Abrir Telnet</button>';
                 html += '</div>';
             }
         }
         html += '<p style="margin-top:6px;"><strong>Prioridad de alertas:</strong> ' + esc(obj.prioridad || 'baja') + '</p>';
-        html += '<p style="margin-top:10px;color:#555;font-size:12px;">' +
-            (puedeEditar()
-                ? 'Haz clic sobre el elemento (sin arrastrar) para editar sus datos.'
-                : '👁️ Modo lectura: solo puedes consultar la información.') + '</p>';
-        if (puedeEditar()) {
-            html += '<button class="btn-add" id="btnEditarModal">✏️ Editar datos</button>';
-        }
+        html += '<p style="margin-top:10px;color:#9fb3c8;font-size:12px;">' + (puedeEditar() ? 'Haz clic sobre el elemento (sin arrastrar) para editar sus datos.' : '👁️ Modo lectura: solo puedes consultar la información.') + '</p>';
+        if (puedeEditar()) html += '<button class="btn-add" id="btnEditarModal">✏️ Editar datos</button>';
     }
-
     document.getElementById('panel-contenido').innerHTML = html;
 
-    // 🔧 NUEVO Parte 3B: Mostrar conexiones globales del equipo seleccionado
     if (esEquipo(obj.tipo)) {
         fetch('/api/topologia/conexiones-equipo/' + encodeURIComponent(obj.id), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
@@ -2126,8 +1726,7 @@ function mostrarPanel(obj) {
                     var otroMun = esOrigen ? c.hasta_municipio_nombre : c.desde_municipio_nombre;
                     var otroMunId = esOrigen ? c.hasta_municipio_id : c.desde_municipio_id;
                     var otroEq = esOrigen ? c.hasta_id : c.desde_id;
-                    bloque += '<li>' + esc(otroMun) + ' <button class="btn b-azul" style="padding:2px 8px;font-size:11px;" ' +
-                      'onclick="window.open(\'/private/topologia.html?municipio=' + encodeURIComponent(otroMunId) + '&enfocar=' + encodeURIComponent(otroEq) + '\', \'_blank\')">Ver →</button></li>';
+                    bloque += '<li>' + esc(otroMun) + ' <button class="btn-add" style="padding:2px 8px;font-size:11px;" onclick="window.open(\'/private/topologia.html?municipio=' + encodeURIComponent(otroMunId) + '&enfocar=' + encodeURIComponent(otroEq) + '\', \'_blank\')">Ver →</button></li>';
                 }
                 bloque += '</ul></div>';
                 panel.insertAdjacentHTML('beforeend', bloque);
@@ -2144,59 +1743,25 @@ function mostrarPanel(obj) {
     }
     var bExp = document.getElementById('btnExportarDatos');
     if (bExp) bExp.addEventListener('click', abrirModalExportar);
-
     var btnEdit = document.getElementById('btnEditarModal');
     if (btnEdit) btnEdit.addEventListener('click', function () { mostrarModalEdicion(obj); });
-
     var nombreSwitch = obj.descripcion || obj.nombre || '';
-
     var btnSSH = document.getElementById('btnAbrirSSH');
     if (btnSSH) btnSSH.addEventListener('click', function () { abrirAccesoRemoto('ssh', obj.ip, nombreSwitch, obj.id); });
-
     var btnWeb = document.getElementById('btnAbrirWeb');
     if (btnWeb) btnWeb.addEventListener('click', function () { abrirAccesoRemoto('web', obj.ip, nombreSwitch); });
-
     var btnTelnet = document.getElementById('btnAbrirTelnet');
     if (btnTelnet) btnTelnet.addEventListener('click', function () { abrirAccesoRemoto('telnet', obj.ip, nombreSwitch); });
-
     var campoNombre = document.querySelector('#panel-contenido [data-campo="nombre"]');
-    if (campoNombre) {
-        campoNombre.addEventListener('change', function () {
-            obj.nombre = this.value;
-            obj.descripcion = this.value;
-            guardar();
-            renderizar();
-        });
-    }
-
+    if (campoNombre) campoNombre.addEventListener('change', function () { obj.nombre = this.value; obj.descripcion = this.value; guardar(); renderizar(); });
     var btnDel = document.getElementById('btnEliminar');
     if (btnDel) {
         var confirmando = false;
         btnDel.addEventListener('click', function () {
-            if (!confirmando) {
-                confirmando = true;
-                this.textContent = '¿Confirmar eliminación?';
-                this.style.background = 'red';
-            } else {
-                for (var k = 0; k < datos.conexiones.length; k++) {
-                    var cn = datos.conexiones[k];
-                    if (cn.desde === obj.id || cn.hasta === obj.id) {
-                        var otroId = cn.desde === obj.id ? cn.hasta : cn.desde;
-                        sumarPuertoEnUso(buscarObjPorId(otroId), cn.tipo, -1);
-                    }
-                }
-                eliminarPorId(obj.id);
-                datos.conexiones = datos.conexiones.filter(function (c) {
-                    return c.desde !== obj.id && c.hasta !== obj.id;
-                });
-                seleccion = null;
-                guardar();
-                renderizar();
-                panelVacio();
-            }
+            if (!confirmando) { confirmando = true; this.textContent = '¿Confirmar eliminación?'; this.style.background = 'red'; }
+            else eliminarObjeto(obj);
         });
     }
-
     if (!puedeEditar()) {
         var solo = document.querySelectorAll('#panel-contenido input, #panel-contenido select, #panel-contenido textarea, #panel-contenido button');
         for (var s = 0; s < solo.length; s++) solo[s].disabled = true;
@@ -2207,13 +1772,8 @@ function pushEnPadre(padre, obj) {
     if (!padre) { datos.unidades.push(obj); return; }
     if (obj.tipo === 'edificio') { padre.edificios = padre.edificios || []; padre.edificios.push(obj); return; }
     if (obj.tipo === 'local') {
-        if (padre.tipo === 'local') {
-            padre.sublocales = padre.sublocales || [];
-            padre.sublocales.push(obj);
-        } else {
-            padre.locales = padre.locales || [];
-            padre.locales.push(obj);
-        }
+        if (padre.tipo === 'local') { padre.sublocales = padre.sublocales || []; padre.sublocales.push(obj); }
+        else { padre.locales = padre.locales || []; padre.locales.push(obj); }
         return;
     }
     if (esEquipo(obj.tipo)) { padre.equipos = padre.equipos || []; padre.equipos.push(obj); return; }
@@ -2223,15 +1783,9 @@ function pushEnPadre(padre, obj) {
 
 function eliminarPorId(id) {
     function eliminarEnArray(arr, id) {
-        for (var i = 0; i < arr.length; i++) {
-            if (arr[i].id === id) {
-                arr.splice(i, 1);
-                return true;
-            }
-        }
+        for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr.splice(i, 1); return true; }
         return false;
     }
-
     function eliminarRecursivo(obj, id) {
         if (obj.edificios && eliminarEnArray(obj.edificios, id)) return true;
         if (obj.locales && eliminarEnArray(obj.locales, id)) return true;
@@ -2239,19 +1793,12 @@ function eliminarPorId(id) {
         if (obj.equipos && eliminarEnArray(obj.equipos, id)) return true;
         if (obj.servicios && eliminarEnArray(obj.servicios, id)) return true;
         if (obj.pcs && eliminarEnArray(obj.pcs, id)) return true;
-
         var hijos = hijosDe(obj);
-        for (var i = 0; i < hijos.length; i++) {
-            if (esContenedor(hijos[i].tipo) && eliminarRecursivo(hijos[i], id)) return true;
-        }
+        for (var i = 0; i < hijos.length; i++) if (esContenedor(hijos[i].tipo) && eliminarRecursivo(hijos[i], id)) return true;
         return false;
     }
-
     if (eliminarEnArray(datos.unidades, id)) return;
-
-    for (var u = 0; u < datos.unidades.length; u++) {
-        if (eliminarRecursivo(datos.unidades[u], id)) return;
-    }
+    for (var u = 0; u < datos.unidades.length; u++) if (eliminarRecursivo(datos.unidades[u], id)) return;
 }
 
 function rutaBaseDe() {
@@ -2262,33 +1809,18 @@ function rutaBaseDe() {
 
 function normalizarEquipo(eq, ubicacion) {
     return {
-        id: eq.id,
-        tipo: eq.tipo || 'pc',
-        descripcion: eq.descripcion || eq.nombre || '',
-        pr: eq.pr || '',
-        sello: eq.sello || '',
-        marca: eq.marca || '',
-        modelo: eq.modelo || '',
-        fecha_instalacion: eq.fecha_instalacion || '',
-        ubicacion: ubicacion,
-        municipio: datos.nombre,
-        ip: eq.ip || '',
-        tipo_gestion: eq.tipo_gestion || '',
-        gestionable: !!eq.gestionable,
+        id: eq.id, tipo: eq.tipo || 'pc', descripcion: eq.descripcion || eq.nombre || '',
+        pr: eq.pr || '', sello: eq.sello || '', marca: eq.marca || '', modelo: eq.modelo || '',
+        fecha_instalacion: eq.fecha_instalacion || '', ubicacion: ubicacion, municipio: datos.nombre,
+        ip: eq.ip || '', tipo_gestion: eq.tipo_gestion || '', gestionable: !!eq.gestionable,
         velocidad_enlace: eq.velocidad_enlace || '',
-        puertos_fibra: eq.puertos_fibra || 0,
-        puertos_fibra_en_uso: eq.puertos_fibra_en_uso || 0,
-        puertos_ethernet: eq.puertos_ethernet || 0,
-        puertos_ethernet_en_uso: eq.puertos_ethernet_en_uso || 0,
-        puerto_ethernet: eq.puerto_ethernet || 0,
-        puerto_ethernet_en_uso: eq.puerto_ethernet_en_uso || 0,
-        usa_adsl: !!eq.usa_adsl,
-        prioridad: eq.prioridad || 'baja',
-        sistemas_atiende: eq.sistemas_atiende || '',
-        monitoreo: eq.monitoreo || 'ping'
+        puertos_fibra: eq.puertos_fibra || 0, puertos_fibra_en_uso: eq.puertos_fibra_en_uso || 0,
+        puertos_ethernet: eq.puertos_ethernet || 0, puertos_ethernet_en_uso: eq.puertos_ethernet_en_uso || 0,
+        puerto_ethernet: eq.puerto_ethernet || 0, puerto_ethernet_en_uso: eq.puerto_ethernet_en_uso || 0,
+        usa_adsl: !!eq.usa_adsl, prioridad: eq.prioridad || 'baja',
+        sistemas_atiende: eq.sistemas_atiende || '', monitoreo: eq.monitoreo || 'ping'
     };
 }
-
 function recogerEquiposDe(obj, rutaPadres) {
     var out = [];
     var nombreObj = obj.descripcion || obj.nombre || '';
@@ -2305,9 +1837,7 @@ function recogerEquiposDe(obj, rutaPadres) {
 function abrirModalDetallesEquipo(e) {
     function filaD(k, v) {
         if (v === null || v === undefined || v === '') return '';
-        return '<div style="border-bottom:1px solid #eee;padding:6px 0;">' +
-            '<span style="display:inline-block;width:40%;color:#555;font-size:12px;">' + k + '</span>' +
-            '<span style="display:inline-block;width:58%;font-size:13px;font-weight:600;">' + esc(String(v)) + '</span></div>';
+        return '<div style="border-bottom:1px solid #eee;padding:6px 0;"><span style="display:inline-block;width:40%;color:#555;font-size:12px;">' + k + '</span><span style="display:inline-block;width:58%;font-size:13px;font-weight:600;">' + esc(String(v)) + '</span></div>';
     }
     var html = '<p style="font-size:11px;color:#555;">👁️ Vista de solo lectura (todos los roles).</p>';
     html += filaD('Tipo', e.tipo);
@@ -2331,9 +1861,7 @@ function abrirModalDetallesEquipo(e) {
         html += filaD('Puertos ethernet', (e.puerto_ethernet_en_uso || 0) + ' / ' + (e.puerto_ethernet || 0) + ' en uso');
         html += filaD('Usa ADSL', e.usa_adsl ? 'Sí' : 'No');
     }
-    if (e.tipo === 'pc') {
-        html += filaD('Sistemas que atiende', e.sistemas_atiende);
-    }
+    if (e.tipo === 'pc') html += filaD('Sistemas que atiende', e.sistemas_atiende);
     html += filaD('Prioridad de alertas', e.prioridad);
     html += filaD('Modo de monitoreo', e.monitoreo);
     html += '<div style="text-align:center;margin-top:16px;"><button class="btn-del" id="btnCerrarDet" style="background:#555;">Cerrar</button></div>';
@@ -2355,15 +1883,9 @@ function exportarDesglose(fmt) {
     if (!lista.length) { alert('No hay equipos para exportar en este contenedor.'); return; }
     var fecha = new Date().toISOString().slice(0, 10);
     var base = 'inventario_' + (datos.nombre || 'municipio').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + fecha;
-
     if (fmt === 'xlsx') {
         var filas = lista.map(function (e) {
-            return {
-                'ID': e.id, 'Tipo': e.tipo, 'Descripción': e.descripcion, 'PR / Código': e.pr,
-                'Sello': e.sello, 'Marca': e.marca, 'Modelo': e.modelo,
-                'Fecha instalación': e.fecha_instalacion ? String(e.fecha_instalacion).slice(0, 10) : '',
-                'Ubicación': e.ubicacion, 'Municipio': e.municipio, 'IP': e.ip
-            };
+            return { 'ID': e.id, 'Tipo': e.tipo, 'Descripción': e.descripcion, 'PR / Código': e.pr, 'Sello': e.sello, 'Marca': e.marca, 'Modelo': e.modelo, 'Fecha instalación': e.fecha_instalacion ? String(e.fecha_instalacion).slice(0, 10) : '', 'Ubicación': e.ubicacion, 'Municipio': e.municipio, 'IP': e.ip };
         });
         var ws = XLSX.utils.json_to_sheet(filas);
         var wb = XLSX.utils.book_new();
@@ -2371,13 +1893,11 @@ function exportarDesglose(fmt) {
         XLSX.writeFile(wb, base + '.xlsx');
         return;
     }
-
     if (fmt === 'oracle') {
         var lineas = ['\uFEFF"ID";"TIPO";"DESCRIPCION";"PR";"SELLO";"MARCA";"MODELO";"FECHA_INSTALACION";"UBICACION";"MUNICIPIO"'];
         lista.forEach(function (e) {
             var f = e.fecha_instalacion ? String(e.fecha_instalacion).slice(0, 10) : '';
-            var row = [e.id, e.tipo, e.descripcion, e.pr, e.sello, e.marca, e.modelo, f, e.ubicacion, e.municipio]
-                .map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; });
+            var row = [e.id, e.tipo, e.descripcion, e.pr, e.sello, e.marca, e.modelo, f, e.ubicacion, e.municipio].map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; });
             lineas.push(row.join(';'));
         });
         descargarArchivoTopo(lineas.join('\n'), base + '.dat', 'text/csv;charset=utf-8');
@@ -2385,14 +1905,12 @@ function exportarDesglose(fmt) {
         setTimeout(function () { descargarArchivoTopo(ctl, 'inventario_fragmento.ctl', 'text/plain;charset=utf-8'); }, 300);
         return;
     }
-
     if (fmt === 'sql') {
         var sql = '-- Inventario de contenedor — generado ' + new Date().toISOString() + '\n';
         lista.forEach(function (e) {
             var f = e.fecha_instalacion ? "TO_DATE('" + String(e.fecha_instalacion).slice(0, 10) + "', 'YYYY-MM-DD')" : 'NULL';
             function q(v) { return "'" + String(v == null ? '' : v).replace(/'/g, "''") + "'"; }
-            sql += 'INSERT INTO INVENTARIO_FISICO_RIM (ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION, UBICACION, MUNICIPIO, FECHA_CARGA) VALUES (' +
-                q(e.id) + ', ' + q(e.tipo) + ', ' + q(e.descripcion) + ', ' + q(e.pr) + ', ' + q(e.sello) + ', ' + q(e.marca) + ', ' + q(e.modelo) + ', ' + f + ', ' + q(e.ubicacion) + ', ' + q(e.municipio) + ', SYSDATE);\n';
+            sql += 'INSERT INTO INVENTARIO_FISICO_RIM (ID, TIPO, DESCRIPCION, PR, SELLO, MARCA, MODELO, FECHA_INSTALACION, UBICACION, MUNICIPIO, FECHA_CARGA) VALUES (' + q(e.id) + ', ' + q(e.tipo) + ', ' + q(e.descripcion) + ', ' + q(e.pr) + ', ' + q(e.sello) + ', ' + q(e.marca) + ', ' + q(e.modelo) + ', ' + f + ', ' + q(e.ubicacion) + ', ' + q(e.municipio) + ', SYSDATE);\n';
         });
         sql += '\nCOMMIT;\n';
         descargarArchivoTopo(sql, base + '.sql', 'text/plain;charset=utf-8');
@@ -2407,55 +1925,47 @@ function abrirModalExportar() {
     html += '<button class="btn-add" id="optSql" style="padding:12px;width:100%;text-align:left;margin-bottom:8px;">📜 <strong>SQL (.sql)</strong><br><span style="font-size:11px;color:#666;">Script INSERT para PostgreSQL, Oracle, MySQL</span></button>';
     html += '</div>';
     html += '<button class="btn-del" id="btnCerrarExp" style="margin-top:15px;background:#555;width:100%;">Cancelar</button>';
-
     abrirModal('📥 Exportar datos del contenedor', html);
-
-    document.getElementById('optXlsx').addEventListener('click', function () {
-        cerrarModal();
-        exportarDesglose('xlsx');
-    });
-    document.getElementById('optOracle').addEventListener('click', function () {
-        cerrarModal();
-        exportarDesglose('oracle');
-    });
-    document.getElementById('optSql').addEventListener('click', function () {
-        cerrarModal();
-        exportarDesglose('sql');
-    });
+    document.getElementById('optXlsx').addEventListener('click', function () { cerrarModal(); exportarDesglose('xlsx'); });
+    document.getElementById('optOracle').addEventListener('click', function () { cerrarModal(); exportarDesglose('oracle'); });
+    document.getElementById('optSql').addEventListener('click', function () { cerrarModal(); exportarDesglose('sql'); });
     document.getElementById('btnCerrarExp').addEventListener('click', cerrarModal);
 }
 
 function iniciar() {
     cargar();
-
     fetch('/api/sesion', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
-        .then(function (s) {
-            rolUsuario = s.rol || 'operador';
-            nombreUsuario = s.nombre || '';
-            aplicarPermisos();
-        })
-        .catch(function () {
-            rolUsuario = 'operador';
-            aplicarPermisos();
-        });
+        .then(function (s) { rolUsuario = s.rol || 'operador'; nombreUsuario = s.nombre || ''; aplicarPermisos(); })
+        .catch(function () { rolUsuario = 'operador'; aplicarPermisos(); });
 
-    document.getElementById('btnVolver').addEventListener('click', function () {
-        window.location.href = '/private/mapa.html';
-    });
+    document.getElementById('btnVolver').addEventListener('click', function () { window.location.href = '/private/geomapa.html'; });
     document.getElementById('btnConectar').addEventListener('click', toggleModoConexion);
-    document.getElementById('btnSalir').addEventListener('click', function () {
-        fetch('/api/logout', { method: 'POST' }).then(function () { window.location.href = '/'; });
-    });
+    document.getElementById('btnSalir').addEventListener('click', function () { fetch('/api/logout', { method: 'POST' }).then(function () { window.location.href = '/'; }); });
+
     document.getElementById('lienzo').addEventListener('mousedown', function () {
         if (modoConexion) return;
-        seleccion = null;
-        conexionSeleccionada = null;
-        esperandoConfirmarEliminar = false;
-        marcarSeleccion();
-        panelVacio();
-        dibujarConexiones();
+        seleccion = null; conexionSeleccionada = null; esperandoConfirmarEliminar = false;
+        marcarSeleccion(); panelVacio(); dibujarConexiones(); renderListado();
     });
+    document.getElementById('lienzo').addEventListener('contextmenu', function (e) {
+        if (e.target.closest('.elemento') || e.target.closest('.linea-hit') || e.target.closest('.handle-curva')) return;
+        e.preventDefault();
+        ctxLienzo(e);
+    });
+
+    var railBuscar = document.getElementById('railBuscar');
+    if (railBuscar) railBuscar.addEventListener('input', renderListado);
+    var railToggle = document.getElementById('railToggle');
+    var railAbrir = document.getElementById('railAbrir');
+    var rail = document.getElementById('rail');
+    if (railToggle) railToggle.addEventListener('click', function () { rail.classList.add('cerrado'); railAbrir.style.display = 'flex'; });
+    if (railAbrir) railAbrir.addEventListener('click', function () { rail.classList.remove('cerrado'); railAbrir.style.display = 'none'; });
+    var leyendaToggle = document.getElementById('leyendaToggle');
+    if (leyendaToggle) leyendaToggle.addEventListener('click', function () { document.getElementById('leyenda').classList.toggle('closed'); });
+
+    document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('#ctxMenu')) cerrarCtx(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarCtx(); if (modoConexion) toggleModoConexion(); } });
 }
 
 document.addEventListener('DOMContentLoaded', iniciar);
