@@ -34,7 +34,30 @@ import { enviarAlertaMonitoreo } from './EmailService/email';
 dotenv.config();
 
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json());
+
+// ⏱️ RENDIMIENTO 1: diagnóstico de peticiones lentas (>300ms) para separar servidor vs red
+app.use((req, res, next) => {
+    const t = Date.now();
+    res.on('finish', () => {
+        const ms = Date.now() - t;
+        if (ms > 300) console.log(`[SLOW] ${req.method} ${req.originalUrl} ${ms}ms`);
+    });
+    next();
+});
+
+// 🗜️ RENDIMIENTO 2: compresión gzip de JSON/JS/HTML/CSS en tránsito.
+// Carga perezosa: si el paquete no está instalado, el servidor arranca igual (solo avisa).
+// Actívala con: npm i compression
+let compression: any = null;
+try { compression = require('compression'); } catch (e) { compression = null; }
+if (compression) {
+    app.use(compression());
+    console.log('🗜️ Compresión gzip activa');
+} else {
+    console.warn('⚠️ Compresión no disponible (ejecuta "npm i compression" para activarla)');
+}
 
 // 🛡️ Cabeceras de seguridad
 app.use((req, res, next) => {
@@ -452,7 +475,7 @@ app.get('/api/admin/configs/:id/descargar', requiereRol('admin', 'superadmin'), 
         const nombre = (c.equipo_nombre || 'config').replace(/[^a-zA-Z0-9_-]/g, '_');
         const fecha = new Date(c.fecha).toISOString().slice(0, 19).replace(/:/g, '-');
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${nombre}_${fecha}.txt`);
+        res.setHeader('Content-Disposition', `attachment; filename="${nombre}_${fecha}.txt"`);
         res.send(c.configuracion);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -531,6 +554,12 @@ app.get('/api/topologia/conexiones-equipo/:id', requiereLogin, async (req, res) 
 // 🌐 FASE 1: Capa geográfica persistida (locks, posiciones, curvas)
 // ============================================================================
 montarRutasGeo(app, requiereLogin, requiereRol);
+
+// 🗄️ RENDIMIENTO 3: caché agresiva para estáticos que nunca cambian.
+// Van ANTES del /private general para que ganen estas reglas.
+app.use('/private/tiles', requiereLogin, express.static(path.join(__dirname, '../Fronted/private/tiles'), { maxAge: '30d', immutable: true }));
+app.use('/private/libs', requiereLogin, express.static(path.join(__dirname, '../Fronted/private/libs'), { maxAge: '7d' }));
+app.use('/private/geo', requiereLogin, express.static(path.join(__dirname, '../Fronted/private/geo'), { maxAge: '1d' }));
 
 app.use('/private', requiereLogin, express.static(path.join(__dirname, '../Fronted/private')));
 
